@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/galactic/include/**",
+        "/home/vineet/ariac_ws/src/src/ariac/ariac_plugins/include/**",
+        "/home/vineet/ariac_ws/src/src/ariac/ariac_sensors/include/**",
+        "/home/vineet/ariac_ws/src/src/ariac/test_competitor/include/**",
+        "/home/vineet/ariac_ws/src/src/group7/include/**",
+        "include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
