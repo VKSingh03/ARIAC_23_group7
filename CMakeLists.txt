@@ -9,11 +9,12 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(ariac_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 include_directories(include/group7)
 
 add_executable(competition_state_subscriber src/competition_ready_subscriber.cpp)
-ament_target_dependencies(competition_state_subscriber rclcpp ariac_msgs)
+ament_target_dependencies(competition_state_subscriber rclcpp ariac_msgs std_srvs) 
 
 install(TARGETS competition_state_subscriber DESTINATION lib/${PROJECT_NAME})
 

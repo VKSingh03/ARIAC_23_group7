@@ -17,9 +17,9 @@ public:
 private:
     // attributes
     rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr competition_state_subscriber;
-    // ariac_msgs::msg::CompetitionState msg;
+    ariac_msgs::msg::CompetitionState msg;
     // rclcpp::Client<std_srvs::srv::Trigger>::ConstSharedPtr client;
 
     // methods
-    void competition_state_callback(const ariac_msgs::msg::CompetitionState::SharedPtr msg);
+    void competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
 };
