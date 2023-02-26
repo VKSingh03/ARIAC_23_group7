@@ -56,7 +56,7 @@ void CompetitionStateSubscriber::ending_competition_callback(const ariac_msgs::m
     if (msg->competition_state == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
         if (total_orders == 0){
             // Service client to End competition.
-            RCLCPP_INFO(this->get_logger(),"Ending Competition :");
+            RCLCPP_INFO(this->get_logger(),"Ending Competition");
             rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
             client = this->create_client<std_srvs::srv::Trigger>("/ariac/end_competition");
             auto request = std::make_shared<std_srvs::srv::Trigger::Request>();

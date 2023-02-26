@@ -13,10 +13,10 @@ find_package(std_srvs REQUIRED)
 
 include_directories(include/group7)
 
-add_executable(competition_state_subscriber src/competition_state_subscriber.cpp)
-ament_target_dependencies(competition_state_subscriber rclcpp ariac_msgs std_srvs) 
+add_executable(group7_start_competition src/competition_state_subscriber.cpp)
+ament_target_dependencies(group7_start_competition rclcpp ariac_msgs std_srvs) 
 
-install(TARGETS competition_state_subscriber DESTINATION lib/${PROJECT_NAME})
+install(TARGETS group7_start_competition DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include DESTINATION share/${PROJECT_NAME})
 
