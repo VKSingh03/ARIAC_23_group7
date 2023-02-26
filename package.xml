@@ -4,7 +4,10 @@
   <name>group7</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="vsingh03@umd.edu">vineet</maintainer>
+  <maintainer email="vsingh03@umd.edu">Vineet</maintainer>
+  <maintainer email="itamraka@umd.edu">Ishan</maintainer>
+  <maintainer email="krishnah@umd.edu">Krishna</maintainer>
+  <maintainer email="pshinde@umd.edu">Pranav</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
