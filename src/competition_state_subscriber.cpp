@@ -35,6 +35,43 @@ void CompetitionStateSubscriber::order_callback(const ariac_msgs::msg::Order::Sh
     }
 }
 
+int CompetitionStateSubscriber::get_quantity_for_this_part(int bin, int part, int color){
+    if (bin_dictionary.count(bin) == 0 || bin_dictionary[bin].count(part) == 0 || bin_dictionary[bin][part].count(color) == 0) {
+        // handle the case where one of the keys does not exist in the map
+        throw std::out_of_range("One of the keys does not exist in the map");
+    }
+    return bin_dictionary[bin][part][color];
+}
+
+void CompetitionStateSubscriber::set_quantity_for_this_part(int bin, int part, int color, int value) {
+    // if (bin_dictionary.find(bin) == bin_dictionary.end() ||
+    //     bin_dictionary[bin].find(part) == bin_dictionary[bin].end() ||
+    //     bin_dictionary[bin][part].find(color) == bin_dictionary[bin][part].end()) {
+    //     // One of the keys doesn't exist, handle error or add new entries
+    //     return;
+    // }
+    bin_dictionary[bin][part][color] += value;
+}
+
+// Subscriber Callback for reading bin status
+void CompetitionStateSubscriber::bin_status_callback(const ariac_msgs::msg::BinParts::ConstSharedPtr msg){
+    if (bin_read == 0){
+        for( int i = 0; i<int(msg->bins.size()); i++){
+            for( int j = 0; j< int(msg->bins[i].parts.size()); j++){
+                CompetitionStateSubscriber::set_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color, msg->bins[i].parts[j].quantity);
+                RCLCPP_INFO(this->get_logger(),"Added Bin Part %d", CompetitionStateSubscriber::get_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color));
+            }
+        }
+        bin_read++;
+    }
+}
+
+// // Subscriber Callback for reading bin status
+// void CompetitionStateSubscriber::conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg){
+//     // RCLCPP_INFO(this->get_logger(),"Reading Conveyor Part %s,  ", msg->parts[0].type.c_str());
+// }
+
+
 void CompetitionStateSubscriber::order_submission_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     // Reading if all orders are announced
     if (msg->competition_state == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
