@@ -3,10 +3,11 @@
 # include <std_srvs/srv/trigger.hpp>
 # include <memory>
 # include <vector>
-#include<iostream>  
+# include <iostream>  
 
 void CompetitionStateSubscriber::competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     // Reading if competition state is READY
+    competition_state_ = msg->competition_state
     if(msg->competition_state == ariac_msgs::msg::CompetitionState::READY){
         RCLCPP_INFO(this->get_logger(),"Reading CompetitionState READY :%d", msg->competition_state);
         rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
@@ -26,32 +27,32 @@ void CompetitionStateSubscriber::order_callback(const ariac_msgs::msg::Order::Sh
         orders_.insert(orders_.begin(),order);
         first_priority_order+=1;
         total_orders +=1; 
-        RCLCPP_INFO(this->get_logger(),"Added priority order %s", order.id.c_str());
+        RCLCPP_INFO(this->get_logger(),"Added priority order '%s' to open orders", order.id.c_str());
     }
     else{
         orders_.push_back(order);
         total_orders += 1;
-        RCLCPP_INFO(this->get_logger(),"Added normal order %s", order.id.c_str());
+        RCLCPP_INFO(this->get_logger(),"Added normal order '%s' to open orders", order.id.c_str());
     }
 }
 
+
 int CompetitionStateSubscriber::get_quantity_for_this_part(int bin, int part, int color){
     if (bin_dictionary.count(bin) == 0 || bin_dictionary[bin].count(part) == 0 || bin_dictionary[bin][part].count(color) == 0) {
-        // handle the case where one of the keys does not exist in the map
         throw std::out_of_range("One of the keys does not exist in the map");
     }
     return bin_dictionary[bin][part][color];
 }
 
-void CompetitionStateSubscriber::set_quantity_for_this_part(int bin, int part, int color, int value) {
-    // if (bin_dictionary.find(bin) == bin_dictionary.end() ||
-    //     bin_dictionary[bin].find(part) == bin_dictionary[bin].end() ||
-    //     bin_dictionary[bin][part].find(color) == bin_dictionary[bin][part].end()) {
-    //     // One of the keys doesn't exist, handle error or add new entries
-    //     return;
-    // }
-    bin_dictionary[bin][part][color] += value;
+
+void CompetitionStateSubscriber::bin_set_quantity_for_this_part(int bin, int part, int color, int value) {
+    bin_dictionary[part][color] += value;
 }
+
+
+void CompetitionStateSubscriber::conveyor_set_quantity_for_this_part(int part, int color, int value) {
+    conveyor_dictionary[part][color] += value;
+
 
 // Subscriber Callback for reading bin status
 void CompetitionStateSubscriber::bin_status_callback(const ariac_msgs::msg::BinParts::ConstSharedPtr msg){
@@ -66,28 +67,31 @@ void CompetitionStateSubscriber::bin_status_callback(const ariac_msgs::msg::BinP
     }
 }
 
-// // Subscriber Callback for reading bin status
-// void CompetitionStateSubscriber::conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg){
-//     // RCLCPP_INFO(this->get_logger(),"Reading Conveyor Part %s,  ", msg->parts[0].type.c_str());
-// }
 
-
-void CompetitionStateSubscriber::order_submission_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
-    // Reading if all orders are announced
-    if (msg->competition_state == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
-        RCLCPP_INFO(this->get_logger(),"Response CompetitionState ORDER_ANNOUNCEMENTS_DONE :'%d'", msg->competition_state);
-        // Submitting orders from Stored data
-        for(auto i = orders_.begin(); i < orders_.end(); i++){
-            RCLCPP_INFO(this->get_logger(),"Submission of Order Id:%s", i->id.c_str() );
-            rclcpp::Client<ariac_msgs::srv::SubmitOrder>::SharedPtr client;
-            client = this->create_client<ariac_msgs::srv::SubmitOrder>("/ariac/submit_order");
-            auto request = std::make_shared<ariac_msgs::srv::SubmitOrder::Request>();
-            request->order_id = i->id;
-            auto result = client->async_send_request(request);
-            total_orders--;
-        }
-    }
+// Subscriber Callback for reading conveyor status
+void CompetitionStateSubscriber::conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg){
+    if(conveyor_read == 0{
+        RCLCPP_INFO(this->get_logger(),"Reading Conveyor Part %s,  ", msg->parts[0].type.c_str());
+    })
+    
 }
+
+// void CompetitionStateSubscriber::order_submission_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
+//     // Reading if all orders are announced
+//     if (msg->competition_state == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
+//         RCLCPP_INFO(this->get_logger(),"Response CompetitionState ORDER_ANNOUNCEMENTS_DONE :'%d'", msg->competition_state);
+//         // Submitting orders from Stored data
+//         for(auto i = orders_.begin(); i < orders_.end(); i++){
+//             RCLCPP_INFO(this->get_logger(),"Submission of Order Id:%s", i->id.c_str() );
+//             rclcpp::Client<ariac_msgs::srv::SubmitOrder>::SharedPtr client;
+//             client = this->create_client<ariac_msgs::srv::SubmitOrder>("/ariac/submit_order");
+//             auto request = std::make_shared<ariac_msgs::srv::SubmitOrder::Request>();
+//             request->order_id = i->id;
+//             auto result = client->async_send_request(request);
+//             total_orders--;
+//         }
+//     }
+// }
 
 void CompetitionStateSubscriber::ending_competition_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     if (msg->competition_state == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
@@ -104,10 +108,160 @@ void CompetitionStateSubscriber::ending_competition_callback(const ariac_msgs::m
     }
 }
 
+void CompetitionStateSubscriber::InsufficientPartsChallange(){
+    // for kitting task
+    int insuf_part_kitting=4;
+    for (auto part:current_order_.kitting_task.parts){
+        for (int i =0, i<9, i++){
+           if (bin_dictionary[i][part->part.type][part->part.color] >=1 && insuf_part_kitting!= 0){
+                kitting_part_details[part.quandrant].first == std::make_pair(part->part.type,part->part.color);
+                kitting_part_details[part.quandrant].second = i;
+                bin_set_quantity_for_this_part(i, part->part.type, part->part.color, -1);
+                insuf_part_kitting --;
+                }
+        }
+        if (iinsuf_part_kitting != 0){
+            if (conveyor_dictionary[part->part.type][part->part.color] >=1){
+                kitting_part_details[part.quandrant].first == std::make_pair(part->part.type,part->part.color);
+                kitting_part_details[part.quandrant].second = 9;
+                conveyor_set_quantity_for_this_part(part->part.type, part->part.color, -1);
+                insuf_part_kitting --;
+                }
+        }
+        }
+    
+    // for assenbly task
+
+    }
+}
+
+
+void CompetitionStateSubscriber::CompleteOrders(){
+    // Wait for first order to be published
+    while (orders_.size() == 0) {}
+
+    bool success;
+    while (true) {
+        if (competition_state_ == ariac_msgs::msg::CompetitionState::ENDED) {
+        success = false;
+        break;
+        }
+
+        if (orders_.size() == 0){
+        if (competition_state_  != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE) {
+            // wait for more orders
+            RCLCPP_INFO(get_logger(), "Waiting for orders...");
+            while (orders_.size() == 0) {}
+            } 
+        else {
+            RCLCPP_INFO(get_logger(), "Completed all orders");
+            success = true;
+            break;
+            }
+        }
+
+        current_order_ = orders_.front();
+        orders_.erase(orders_.begin());
+
+        CompetitionStateSubscriber::InsufficientPartsChallange()
+
+        if (current_order_.type == ariac_msgs::msg::Order::KITTING) {
+        TestCompetitor::CompleteKittingTask(current_order_.kitting_task);
+        // Submit order
+        TestCompetitor::SubmitOrder(current_order_.id);
+        } else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY) {
+        TestCompetitor::CompleteAssemblyTask(current_order_.assembly_task);
+        } else if (current_order_.type == ariac_msgs::msg::Order::COMBINED) {
+        TestCompetitor::CompleteCombinedTask(current_order_.combined_task);
+        }
+    }
+}
+
+void CompetitionStateSubscriber::floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg) 
+{
+  floor_gripper_state_ = *msg;
+}
+
+void CompetitionStateSubscriber::FlooorRobotSendHome(){
+    RCLCPP_INFO("Moving Floor Robot to Home position")
+}
+
+bool CompetitionStateSubscriber::FloorRobotPickandPlaceTray(int tray_id, int agv_no){
+    // Checking for parts in bins/tables using camera
+    RCLCPP_INFO ("Checking Tray Tables for Tray Id: %d : ", tray_id);
+    // Check if kit tray is on one of the two tables
+    // geometry_msgs::msg::Pose tray_pose;
+    std::string station;
+    bool found_tray = false;
+    RCLCPP_INFO(this->get_logger()," Moving Robot to Tray Table")
+    RCLCPP_INFO (this->get_logger(),"Checking if the Floor Robot has Tray gripper: ");
+    if (floor_gripper_state_.type != "tray_gripper") {
+        FloorRobotChangeGripper(station, "trays");
+    }
+    else {
+        RCLCPP_INFO(this->get_logger(),"Floor Robot gripper is correct.");
+    }
+    RCLCPP_INFO(this->get_logger(),"Moving to pickup tray ID: %d", tray_id);   
+    RCLCPP_INFO(this->get_logger(),"Placing tray on AGV ID: %d", agv_no);
+}
+
+void CompetitionStateSubscriber::FloorRobotChangeGripper(std::string station, std::string gripper_type){
+    RCLCPP_INFO(this->get_logger(),"Changing Floor Robot Gripper to type: '%s'");
+}
+
+bool CompetitionStateSubscriber::FloorRobotPickBinPart(){
+    print(" Reading Bins status to check for part in Bin")
+    // Implement code to check both the bins status here to find the parts. Use the implemented dictionary.
+    // print(" Reading Conveyor Status to check for part in Conveyor")
+    // // Implement code to check Conveyor status to find the parts if not found here. Use the implemented dictionary.
+
+    RCLCPP_INFO_STREAM(get_logger(), "Attempting to pick a " <<
+    part_colors_[part_to_pick.color] << " " << part_types_[part_to_pick.type]);
+    
+    print(" Pickup part from the Bin Id: '%d', Quadrant: '%d' ", bin_id, quadrant)
+    // Implement function to pickup part from the Bin Id
+    print(" Change gripper to Part Gripper ")
+    // Call function to change Robot Gripper
+}
+
+void CompetitionStateSubscriber::FloorRobotPlacePartOnKitTray(){
+    print(" Move robot to the AGV number :'%s'". AGV_Id)
+    print(" Place part on the kit tray ID: '%s'", tray_id)
+}
+
+void CompetitionStateSubscriber::MoveAGV(){
+    print("Locking AGV ")
+    print("Moving AGV to Warehouse")
+}
+
+bool CompetitionStateSubscriber::CompleteKittingTask() // change type of receiving variable
+{ 
+    FloorRobotSendHome();
+    FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
+    for (auto kit_part: task.parts) {
+        FloorRobotPickBinPart(kit_part.part);
+        FloorRobotPlacePartOnKitTray(task.agv_number, kit_part.quadrant);
+    }
+    MoveAGV(task.agv_number, task.destination);
+    return true;
+}
+
 int main(int argc, char *argv[]){
     rclcpp::init(argc,argv);
     auto comp_state_subscriber = std::make_shared<CompetitionStateSubscriber>("CompetitionStateSubscriber");
-    rclcpp::spin(comp_state_subscriber);
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(comp_state_subscriber);
+    // node->StartCompetition();
+    // executor.spin();
+    std::thread([&executor]()
+                { executor.spin(); })
+        .detach();
+    comp_state_subscriber->CompetitionStateSubscriber();
+
+    comp_state_subscriber->CompleteOrders();
+
+
+    // rclcpp::spin(comp_state_subscriber);
     rclcpp::shutdown();
 }
 

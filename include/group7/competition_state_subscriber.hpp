@@ -40,28 +40,38 @@ public:
     }
 
 private:
-    // attributes
+    // Subscribers: 
     // Subscriber to read competition state READY
     rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr competition_state_subscriber; 
-    // Vector to store received orders based on priority
-    std::vector<OrderData> orders_;
     // Subscriber to receive orders. 
     rclcpp::Subscription<ariac_msgs::msg::Order>::SharedPtr subscriber_; 
     // Subscriber to read competition state ORDER_ANNOUNCEMENT_DONE
-    rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr order_submission_subscriber; 
+    // rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr order_submission_subscriber; 
     // Subscriber to read Competition State & Order Submission and to implement EndCompetition Service client
     rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr end_competition_subscriber; 
     // Subscriber to bin status
     rclcpp::Subscription<ariac_msgs::msg::BinParts>::SharedPtr bin_state_subscriber; 
-    // Subscriber to bin status
+    // Subscriber to Converyor status
     // rclcpp::Subscription<ariac_msgs::msg::ConveyorParts>::SharedPtr conveyor_state_subscriber; 
-    // Variable to store first position of priority order in the vector
+    // Subscriber to Floor Robot Gripper type
+    rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_;
+
+    // Variables: 
+    // Variable to store competition state 
+    unsigned int competition_state_;
+    // Vector to store received orders based on priority
+    std::vector<OrderData> orders_;
+    // Variable to store current order
+    OrderData current_order_;
+    // Gripper State
+    ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
+    // Variable to store position of first priority order in the vector
     int first_priority_order{0};
     // Variable to keep of total orders received and pending. 
     int total_orders{0};
     // To store bin read status
     int bin_read{0};
-    // Data Structure to store bin data
+    // Data Structure to store and update bin data
     std::map<int, std::map<int, std::map<int, int>>> bin_dictionary = {
     {1, {{10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}}},
@@ -80,26 +90,65 @@ private:
     {8, {{10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}}},
     };
-    // Data Structure to store conveyor data
+    // Data Structure to store and update conveyor data
     std::map<int, std::map<int, int>>conveyor_dictionary = {
-    {10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
-    {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}};
+    {10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
+    {11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
+    {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
+    {13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}};
 
-    // methods
+    // Data structure to store kitting task plan
+    std::map<int, std::pair<std::pair<int, int>, int>> kitting_part_details = {
+    {1 , std::make_pair(std::make_pair(0, 0), None)}, 
+    {2 , std::make_pair(std::make_pair(0, 0), None)}, 
+    {3 , std::make_pair(std::make_pair(0, 0), None)}, 
+    {4 , std::make_pair(std::make_pair(0, 0), None)}};
+
+// }
+    // Data Structure to store Kitting task
+    // std::map<
+    // Data Structure to store Assembly task
+
+    // Data Structure to store Combined task
+
+    // Subscriber Callbacks.
     // Subscriber Callback to competition state
     void competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
     // Subscriber Callback to receive orders
     void order_callback(const ariac_msgs::msg::Order::SharedPtr msg);
-    // Subscriber Callback for Order submission
-    void order_submission_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
+    // // Subscriber Callback for Order submission
+    // void order_submission_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
     // Subscriber Callback for Ending Competition
     void ending_competition_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
     // Subscriber Callback for reading bin status
     void bin_status_callback(const ariac_msgs::msg::BinParts::ConstSharedPtr msg);
     // Subscriber Callback for reading conveyor status
-    // void conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg);
-    // 
+    void conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg);
+    // Floor robot Gripper State Callback
+    void floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg);
+    
+    // Functions to complete specific tasks 
+    // Function to get quantity of a particular part in the Bin
     int get_quantity_for_this_part(int bin, int part, int color);
-    // Setter for 
+    // Function to update quantity for the given part on bin
     void set_quantity_for_this_part(int bin, int part, int color, int value);
+    // Function for completing orders
+    void CompleteOrders();
+    // Function for completing Kitting task
+    void CompleteKittingTask();
+    // Function for completing Assembly task
+    void CompleteAssemblyTask();
+    // Function for completing Combined task
+    void CompleteCombinedTask();
+
+    //Kitting Task Functions: 
+    void FloowRobtPlacePartOnKitTray();
+    void MoveAGV();
+    bool FloorRobotPickBinPart();
+    void FloorRobotChangeGripper();
+    bool FloorRobotSendHome();
+    void InsufficientPartsChallange();
+
+
+
 }; 
