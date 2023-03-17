@@ -52,7 +52,7 @@ private:
     // Subscriber to bin status
     rclcpp::Subscription<ariac_msgs::msg::BinParts>::SharedPtr bin_state_subscriber; 
     // Subscriber to Converyor status
-    // rclcpp::Subscription<ariac_msgs::msg::ConveyorParts>::SharedPtr conveyor_state_subscriber; 
+    rclcpp::Subscription<ariac_msgs::msg::ConveyorParts>::SharedPtr conveyor_state_subscriber; 
     // Subscriber to Floor Robot Gripper type
     rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_;
 
@@ -104,13 +104,6 @@ private:
     {3 , std::make_pair(std::make_pair(0, 0), None)}, 
     {4 , std::make_pair(std::make_pair(0, 0), None)}};
 
-// }
-    // Data Structure to store Kitting task
-    // std::map<
-    // Data Structure to store Assembly task
-
-    // Data Structure to store Combined task
-
     // Subscriber Callbacks.
     // Subscriber Callback to competition state
     void competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
@@ -129,9 +122,11 @@ private:
     
     // Functions to complete specific tasks 
     // Function to get quantity of a particular part in the Bin
-    int get_quantity_for_this_part(int bin, int part, int color);
+    int bin_get_quantity_for_this_part(int bin, int part, int color);
     // Function to update quantity for the given part on bin
     void set_quantity_for_this_part(int bin, int part, int color, int value);
+    // Function to update quantity for the given part on Conveyor
+    void conveyor_set_quantity_for_this_part(int part, int color, int value)
     // Function for completing orders
     void CompleteOrders();
     // Function for completing Kitting task
@@ -140,15 +135,25 @@ private:
     void CompleteAssemblyTask();
     // Function for completing Combined task
     void CompleteCombinedTask();
+    // Function to complete Insufficient Parts Challange
+    void InsufficientPartsChallange();
+    // Function to Submit Orders
+    bool SubmitOrder(std::string order_id)
 
     //Kitting Task Functions: 
     void FloowRobtPlacePartOnKitTray();
     void MoveAGV();
     bool FloorRobotPickBinPart();
-    void FloorRobotChangeGripper();
+    void FloorRobotChangeGripper(std::string station, std::string gripper_type);
     bool FloorRobotSendHome();
-    void InsufficientPartsChallange();
+    bool FloorRobotPickandPlaceTray(int tray_id, int agv_no);
 
+    // Assembly Task Functions: 
+    void CeilingRobotSendHome();
+    void CeilingRobotPickTrayPart();
+    void CeilingRobotPlacePartInInsert();
 
+    //Combined Task Fumctioms: 
+    void AGVAvailable();
 
 }; 
