@@ -12,28 +12,28 @@
 # include "order_class.hpp"
 
 // Class to read competition state, receive and submit orders
-class CompetitionStateSubscriber:public rclcpp::Node 
+class CompetitorControlSystem:public rclcpp::Node 
 {
 
 public:
     // Constructor for class CompetitionStateSubscriber
-    CompetitionStateSubscriber(std::string node_name):Node(node_name)
+    CompetitorControlSystem(std::string node_name):Node(node_name)
     {   
         // Subscriber to competition state for Launching Competition
         competition_state_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
-        std::bind(&CompetitionStateSubscriber::competition_state_callback, this, std::placeholders::_1));
+        std::bind(&CompetitorControlSystem::competition_state_callback, this, std::placeholders::_1));
         // Subscriber to receive ariac orders
         subscriber_ = this->create_subscription<ariac_msgs::msg::Order>("/ariac/orders", 10, 
-        std::bind(&CompetitionStateSubscriber::order_callback, this, std::placeholders::_1));
+        std::bind(&CompetitorControlSystem::order_callback, this, std::placeholders::_1));
         // Subscriber to Competition state for Order Submission
         order_submission_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
-        std::bind(&CompetitionStateSubscriber::order_submission_callback, this, std::placeholders::_1));
+        std::bind(&CompetitorControlSystem::order_submission_callback, this, std::placeholders::_1));
         // Subscriber to Competition state for Order Submission
         end_competition_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
-        std::bind(&CompetitionStateSubscriber::ending_competition_callback, this, std::placeholders::_1));
+        std::bind(&CompetitorControlSystem::ending_competition_callback, this, std::placeholders::_1));
         // Subscriber to bin_status
         bin_state_subscriber = this->create_subscription<ariac_msgs::msg::BinParts>("/ariac/bin_parts", 10, 
-        std::bind(&CompetitionStateSubscriber::bin_status_callback, this, std::placeholders::_1));
+        std::bind(&CompetitorControlSystem::bin_status_callback, this, std::placeholders::_1));
         // Subscriber to conveyor_status
         // conveyor_state_subscriber = this->create_subscription<ariac_msgs::msg::ConveyorParts>("/ariac/conveyor_parts", 10, 
         // std::bind(&CompetitionStateSubscriber::conveyor_status_callback, this, std::placeholders::_1));

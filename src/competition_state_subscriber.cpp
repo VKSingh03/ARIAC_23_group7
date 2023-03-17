@@ -5,7 +5,7 @@
 # include <vector>
 # include <iostream>  
 
-void CompetitionStateSubscriber::competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
+void CompetitorControlSystem::competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     // Reading if competition state is READY
     competition_state_ = msg->competition_state
     if(msg->competition_state == ariac_msgs::msg::CompetitionState::READY){
@@ -18,7 +18,7 @@ void CompetitionStateSubscriber::competition_state_callback(const ariac_msgs::ms
     } 
 }
 
-void CompetitionStateSubscriber::order_callback(const ariac_msgs::msg::Order::SharedPtr msg){   
+void CompetitorControlSystem::order_callback(const ariac_msgs::msg::Order::SharedPtr msg){   
     RCLCPP_INFO_STREAM(this->get_logger(), "Received order Id: " << msg->id);
     // Creating object of order_data to store current order
     OrderData order(msg); 
@@ -36,28 +36,28 @@ void CompetitionStateSubscriber::order_callback(const ariac_msgs::msg::Order::Sh
     }
 }
 
-int CompetitionStateSubscriber::bin_get_quantity_for_this_part(int bin, int part, int color){
+int CompetitorControlSystem::bin_get_quantity_for_this_part(int bin, int part, int color){
     if (bin_dictionary.count(bin) == 0 || bin_dictionary[bin].count(part) == 0 || bin_dictionary[bin][part].count(color) == 0) {
         throw std::out_of_range("One of the keys does not exist in the map");
     }
     return bin_dictionary[bin][part][color];
 }
 
-void CompetitionStateSubscriber::bin_set_quantity_for_this_part(int bin, int part, int color, int value) {
+void CompetitorControlSystem::bin_set_quantity_for_this_part(int bin, int part, int color, int value) {
     bin_dictionary[part][color] += value;
 }
 
-void CompetitionStateSubscriber::conveyor_set_quantity_for_this_part(int part, int color, int value) {
+void CompetitorControlSystem::conveyor_set_quantity_for_this_part(int part, int color, int value) {
     conveyor_dictionary[part][color] += value;
 }
 
 // Subscriber Callback for reading bin status
-void CompetitionStateSubscriber::bin_status_callback(const ariac_msgs::msg::BinParts::ConstSharedPtr msg){
+void CompetitorControlSystem::bin_status_callback(const ariac_msgs::msg::BinParts::ConstSharedPtr msg){
     if (bin_read == 0){
         for( int i = 0; i<int(msg->bins.size()); i++){
             for( int j = 0; j< int(msg->bins[i].parts.size()); j++){
-                CompetitionStateSubscriber::set_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color, msg->bins[i].parts[j].quantity);
-                RCLCPP_INFO(this->get_logger(),"Added Bin Part %d", CompetitionStateSubscriber::get_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color));
+                CompetitorControlSystem::set_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color, msg->bins[i].parts[j].quantity);
+                RCLCPP_INFO(this->get_logger(),"Added Bin Part %d", CompetitorControlSystem::get_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color));
             }
         }
         bin_read++;
@@ -66,7 +66,7 @@ void CompetitionStateSubscriber::bin_status_callback(const ariac_msgs::msg::BinP
 
 
 // Subscriber Callback for reading conveyor status
-void CompetitionStateSubscriber::conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg){
+void CompetitorControlSystem::conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg){
     if(conveyor_read == 0{
         RCLCPP_INFO(this->get_logger(),"Reading Conveyor Part %s,  ", msg->parts[0].type.c_str());
     })
@@ -90,7 +90,7 @@ void CompetitionStateSubscriber::conveyor_status_callback(const ariac_msgs::msg:
 //     }
 // }
 
-bool CompetitionStateSubscriber::SubmitOrder(std::string order_id)
+bool CompetitorControlSystem::SubmitOrder(std::string order_id)
 {
   rclcpp::Client<ariac_msgs::srv::SubmitOrder>::SharedPtr client;
   client = this->create_client<ariac_msgs::srv::SubmitOrder>("/ariac/submit_order");
@@ -100,7 +100,7 @@ bool CompetitionStateSubscriber::SubmitOrder(std::string order_id)
   return result.get()->success;
 }
 
-void CompetitionStateSubscriber::ending_competition_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
+void CompetitorControlSystem::ending_competition_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     if (msg->competition_state == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
         if (total_orders == 0){
             // Service client to End competition.
@@ -115,7 +115,7 @@ void CompetitionStateSubscriber::ending_competition_callback(const ariac_msgs::m
     }
 }
 
-void CompetitionStateSubscriber::InsufficientPartsChallange(){
+void CompetitorControlSystem::InsufficientPartsChallange(){
     // for kitting task
     int insuf_part_kitting=4;
     for (auto part:current_order_.kitting_task.parts){
@@ -141,7 +141,7 @@ void CompetitionStateSubscriber::InsufficientPartsChallange(){
 
     }
 
-void CompetitionStateSubscriber::CompleteOrders(){
+void CompetitorControlSystem::CompleteOrders(){
     // Wait for first order to be published
     while (orders_.size() == 0) {}
 
@@ -168,7 +168,7 @@ void CompetitionStateSubscriber::CompleteOrders(){
         current_order_ = orders_.front();
         orders_.erase(orders_.begin());
 
-        CompetitionStateSubscriber::InsufficientPartsChallange()
+        CompetitorControlSystem::InsufficientPartsChallange()
 
         if (current_order_.type == ariac_msgs::msg::Order::KITTING) {
         CompetitionStateSubscriber::CompleteKittingTask(current_order_.kitting_task);
@@ -184,16 +184,16 @@ void CompetitionStateSubscriber::CompleteOrders(){
     }
 }
 
-void CompetitionStateSubscriber::floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg) 
+void CompetitorControlSystem::floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg) 
 {
   floor_gripper_state_ = *msg;
 }
 
-void CompetitionStateSubscriber::FlooorRobotSendHome(){
+void CompetitorControlSystem::FlooorRobotSendHome(){
     RCLCPP_INFO("Moving Floor Robot to Home position")
 }
 
-bool CompetitionStateSubscriber::FloorRobotPickandPlaceTray(int tray_id, int agv_no){
+bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, int agv_no){
     // Checking for parts in bins/tables using camera
     RCLCPP_INFO ("Checking Tray Tables for Tray Id: %d : ", tray_id);
     // Check if kit tray is on one of the two tables
@@ -212,11 +212,11 @@ bool CompetitionStateSubscriber::FloorRobotPickandPlaceTray(int tray_id, int agv
     RCLCPP_INFO(this->get_logger(),"Placing tray on AGV ID: %d", agv_no);
 }
 
-void CompetitionStateSubscriber::FloorRobotChangeGripper(std::string station, std::string gripper_type){
+void CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::string gripper_type){
     RCLCPP_INFO(this->get_logger(),"Changing Floor Robot Gripper to type: '%s'");
 }
 
-bool CompetitionStateSubscriber::FloorRobotPickBinPart(){
+bool CompetitorControlSystem::FloorRobotPickBinPart(){
     RCLCPP_INFO_STREAM(get_logger()," Reading Bins status to check for part in Bin");
     // Implement code to check both the bins status here to find the parts. Use the implemented dictionary.
     // print(" Reading Conveyor Status to check for part in Conveyor")
@@ -229,35 +229,35 @@ bool CompetitionStateSubscriber::FloorRobotPickBinPart(){
     // Call function to change Robot Gripper
 }
 
-void CompetitionStateSubscriber::FloorRobotPlacePartOnKitTray(){
+void CompetitorControlSystem::FloorRobotPlacePartOnKitTray(){
     RCLCPP_INFO_STREAM(get_logger()," Move robot to the AGV number :'%s'". AGV_Id);
     RCLCPP_INFO_STREAM(get_logger()," Place part on the kit tray ID: '%s'", tray_id);
 }
 
-void CompetitionStateSubscriber::MoveAGV(){
+void CompetitorControlSystem::MoveAGV(){
     RCLCPP_INFO_STREAM(get_logger(),"Locking AGV ");
     RCLCPP_INFO_STREAM(get_logger(),"Moving AGV to Warehouse");
 }
 
-void CompetitionStateSubscriber::CeilingRobotSendHome(){
+void CompetitorControlSystem::CeilingRobotSendHome(){
     RCLCPP_INFO("Moving Floor Robot to Home position")
 }
 
-void CompetitionStateSubscriber::CeilingRobotPickTrayPart(){
+void CompetitorControlSystem::CeilingRobotPickTrayPart(){
     RCLCPP_INFO_STREAM(get_logger()," Checking AGV %s(part) location in tray");
     RCLCPP_INFO_STREAM(get_logger(), "Moving to Pick up " <<part_colors_[part_to_pick.color] << " " << part_types_[part_to_pick.type]);
     RCLCPP_INFO_STREAM(get_logger()," Picked up part from Tray");
 }
 
-void CompetitionStateSubscriber::CeilingRobotPlacePartInInsert(){
+void CompetitorControlSystem::CeilingRobotPlacePartInInsert(){
     RCLCPP_INFO_STREAM(get_logger()," Placing part in Inser for %s ", insert_insert_type);
 }
 
-int CompetitionStateSubscriber::AGVAvailable(){
+int CompetitorControlSystem::AGVAvailable(){
     RCLCPP_INFO_STREAM(get_logger(),'Selecting available AGV here.')
 }
 
-bool CompetitionStateSubscriber::CompleteKittingTask() // change type of receiving variable
+bool CompetitorControlSystem::CompleteKittingTask() // change type of receiving variable
 { 
     FloorRobotSendHome();
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
@@ -269,7 +269,7 @@ bool CompetitionStateSubscriber::CompleteKittingTask() // change type of receivi
     return true;
 }
 
-bool CompetitionStateSubscriber::CompleteAssemblyTask()
+bool CompetitorControlSystem::CompleteAssemblyTask()
 {   
     MoveAGV(task.agv_number, task.destination);
     CeilingRobotSendHome();
@@ -280,7 +280,7 @@ bool CompetitionStateSubscriber::CompleteAssemblyTask()
     return true;
 }
 
-bool CompetitionStateSubscriber::CompleteCombinedTask(){
+bool CompetitorControlSystem::CompleteCombinedTask(){
     FloorRobotSendHome();
     agv = AGVAvailable();
     FloorRobotPickandPlaceTray(task.tray_id, agv);
@@ -299,17 +299,17 @@ bool CompetitionStateSubscriber::CompleteCombinedTask(){
 
 int main(int argc, char *argv[]){
     rclcpp::init(argc,argv);
-    auto comp_state_subscriber = std::make_shared<CompetitionStateSubscriber>("CompetitionStateSubscriber");
+    auto competitor_control_system = std::make_shared<CompetitorControlSystem>("CompetitorControlSystem");
     rclcpp::executors::MultiThreadedExecutor executor;
-    executor.add_node(comp_state_subscriber);
+    executor.add_node(competitor_control_system);
     // node->StartCompetition();
     // executor.spin();
     std::thread([&executor]()
                 { executor.spin(); })
         .detach();
-    comp_state_subscriber->CompetitionStateSubscriber();
+    competitor_control_system->CompetitorControlSystem();
 
-    comp_state_subscriber->CompleteOrders();
+    competitor_control_system->CompleteOrders();
 
 
     // rclcpp::spin(comp_state_subscriber);
