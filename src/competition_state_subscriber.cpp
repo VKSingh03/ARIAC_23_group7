@@ -5,40 +5,71 @@
 # include <vector>
 # include <iostream>  
 
-std::string CompetitorControlSystem::DestinationtoString(int dest){
-    if (dest == 1)
+std::string CompetitorControlSystem::DestinationtoString(uint8_t dest){
+    // if (dest == 1)
+    //     return "Assembly Front";
+    // else if (dest == 2)
+    //     return "Assembly Back";
+    // else if (dest == 2)
+    //     return "Warehouse";
+    // else
+    //     return "unknown";
+
+    if (dest == ariac_msgs::msg::KittingTask::ASSEMBLY_FRONT)
         return "Assembly Front";
-    else if (dest == 2)
+    else if (dest == ariac_msgs::msg::KittingTask::ASSEMBLY_BACK)
         return "Assembly Back";
-    else if (dest == 2)
+    else if (dest == ariac_msgs::msg::KittingTask::WAREHOUSE)
         return "Warehouse";
     else
         return "unknown";
 }
 
-std::string CompetitorControlSystem::PartTypetoString(int part_type){
-    if (part_type == 10)
+std::string CompetitorControlSystem::PartTypetoString(uint8_t part_type){
+    // if (part_type == 10)
+    //     return "battery";
+    // else if (part_type == 11)
+    //     return "pump";
+    // else if (part_type == 13)
+    //     return "regulator";
+    // else if (part_type == 12)
+    //     return "sensor";
+    // else
+    //     return "unknown";
+    if (part_type == ariac_msgs::msg::Part::BATTERY)
         return "battery";
-    else if (part_type == 11)
+    else if (part_type == ariac_msgs::msg::Part::PUMP)
         return "pump";
-    else if (part_type == 13)
+    else if (part_type == ariac_msgs::msg::Part::REGULATOR)
         return "regulator";
-    else if (part_type == 12)
+    else if (part_type == ariac_msgs::msg::Part::SENSOR)
         return "sensor";
     else
         return "unknown";
 }
 
-std::string CompetitorControlSystem::PartColortoString(int part_color){
-    if (part_color == 0)
+std::string CompetitorControlSystem::PartColortoString(uint8_t part_color){
+    // if (part_color == 0)
+    //     return "red";
+    // else if (part_color == 1)
+    //     return "green";
+    // else if (part_color == 2)
+    //     return "blue";
+    // else if (part_color == 4)
+    //     return "purple";
+    // else if (part_color == 3)
+    //     return "orange";
+    // else
+    //     return "unknown";
+    if (part_color == ariac_msgs::msg::Part::RED)
         return "red";
-    else if (part_color == 1)
+    else if (part_color == ariac_msgs::msg::Part::GREEN)
         return "green";
-    else if (part_color == 2)
+    else if (part_color == ariac_msgs::msg::Part::BLUE)
         return "blue";
-    else if (part_color == 4)
+    else if (part_color == ariac_msgs::msg::Part::PURPLE)
         return "purple";
-    else if (part_color == 3)
+    else if (part_color == ariac_msgs::msg::Part::ORANGE)
         return "orange";
     else
         return "unknown";
@@ -75,24 +106,24 @@ void CompetitorControlSystem::order_callback(const ariac_msgs::msg::Order::Share
     }
 }
 
-int CompetitorControlSystem::bin_get_quantity_for_this_part(int bin, int part, int color){
+int CompetitorControlSystem::bin_get_quantity_for_this_part(uint8_t bin, uint8_t part, uint8_t color){
     if (bin_dictionary.count(bin) == 0 || bin_dictionary[bin].count(part) == 0 || bin_dictionary[bin][part].count(color) == 0) {
         throw std::out_of_range("One of the keys does not exist in the map");
     }
     return bin_dictionary[bin][part][color];
 }
 
-void CompetitorControlSystem::bin_set_quantity_for_this_part(int bin, int part, int color, int value) {
-    bin_dictionary[part][color] += value;
+void CompetitorControlSystem::bin_set_quantity_for_this_part(uint8_t bin, uint8_t part, uint8_t color, int value) {
+    bin_dictionary[bin][part][color] += value;
 }
 
-void CompetitorControlSystem::conveyor_set_quantity_for_this_part(int part, int color, int value) {
+void CompetitorControlSystem::conveyor_set_quantity_for_this_part(uint8_t part, uint8_t color, int value) {
     conveyor_dictionary[part][color] += value;
 }
 
 void CompetitorControlSystem::bin_status_callback(const ariac_msgs::msg::BinParts::ConstSharedPtr msg){
     if (bin_read == 0){
-        for( int i = 0; i<int(msg->bins.size()); i++){
+        for(int i = 0; i<int(msg->bins.size()); i++){
             for( int j = 0; j< int(msg->bins[i].parts.size()); j++){
                 CompetitorControlSystem::bin_set_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color, msg->bins[i].parts[j].quantity);
                 RCLCPP_INFO(this->get_logger(),"Added Bin Part %d", CompetitorControlSystem::bin_get_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color));
@@ -105,7 +136,12 @@ void CompetitorControlSystem::bin_status_callback(const ariac_msgs::msg::BinPart
 void CompetitorControlSystem::conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg){
     if(conveyor_read == 0){
         // add variable to update values here. 
-        RCLCPP_INFO(this->get_logger(),"Reading Conveyor Part %s, ", msg->parts[0].type.c_str());
+        for( int i = 0; i<int(msg->parts.size()); i++){
+            CompetitorControlSystem::conveyor_set_quantity_for_this_part(msg->parts[i].part.type, msg->parts[i].part.color, msg->parts[i].quantity);
+            // RCLCPP_INFO(this->get_logger(),"Added Bin Part %d", CompetitorControlSystem::bin_get_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color));
+            }
+
+        // RCLCPP_INFO(this->get_logger(),"Reading Conveyor Part %s, ", msg->parts[0].type.c_str());
         conveyor_read++;
     }
     
@@ -136,51 +172,71 @@ void CompetitorControlSystem::ending_competition_callback(const ariac_msgs::msg:
     }
 }
 
-void CompetitorControlSystem::InsufficientPartsChallange(){
+void CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order_){
     // for kitting task
     int insuf_part_kitting=4;
-    for (auto part:current_order_.kitting_task.parts){
-        for (int i =0, i<9, i++){
-           if (bin_dictionary[i][part->part.type][part->part.color] >=1 && insuf_part_kitting!= 0){
-                kitting_part_details[part.quandrant].first == std::make_pair(part->part.type,part->part.color);
-                kitting_part_details[part.quandrant].second = i;
-                bin_set_quantity_for_this_part(i, part->part.type, part->part.color, -1);
+    // auto j = 0;
+    for (auto j = 0; j < current_order_.kitting.kitting_parts.number_of_parts; j ++){
+        for (uint8_t i =0; i<9; i++){
+           if (bin_dictionary[i][current_order_.kitting.kitting_parts.parts_[j].type][current_order_.kitting.kitting_parts.parts_[j].color] >=1 && insuf_part_kitting!= 0){
+                kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first == std::make_pair(current_order_.kitting.kitting_parts.parts_[j].type,current_order_.kitting.kitting_parts.parts_[j].color);
+                kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = i;
+                bin_set_quantity_for_this_part(i, current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                 insuf_part_kitting --;
                 }
         }
         if (insuf_part_kitting != 0){
-            if (conveyor_dictionary[part->part.type][part->part.color] >=1){
-                kitting_part_details[part.quandrant].first == std::make_pair(part->part.type,part->part.color);
-                kitting_part_details[part.quandrant].second = 9;
-                conveyor_set_quantity_for_this_part(part->part.type, part->part.color, -1);
+            if (conveyor_dictionary[current_order_.kitting.kitting_parts.parts_[j].type][current_order_.kitting.kitting_parts.parts_[j].color] >=1){
+                kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first == std::make_pair(current_order_.kitting.kitting_parts.parts_[j].type,current_order_.kitting.kitting_parts.parts_[j].color);
+                kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = 9;
+                conveyor_set_quantity_for_this_part(current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                 insuf_part_kitting --;
                 }
         }
         }
+
+    // for (auto part_details:current_order_.kitting.kitting_parts.parts_){
+    //     for (uint8_t i =0; i<9; i++){
+    //        if (bin_dictionary[i][part_details.part.type][part_details.part.color] >=1 && insuf_part_kitting!= 0){
+    //             kitting_part_details[part_details.quandrant].first == std::make_pair(part_details.part.type,part_details.part.color);
+    //             kitting_part_details[part_details.quandrant].second = i;
+    //             bin_set_quantity_for_this_part(i, part_details.part.type, part_details.part.color, -1);
+    //             insuf_part_kitting --;
+    //             }
+    //     }
+    //     if (insuf_part_kitting != 0){
+    //         if (conveyor_dictionary[part_details.part.type][part_details.part.color] >=1){
+    //             kitting_part_details[part_details.quandrant].first == std::make_pair(part_details.part.type,part_details.part.color);
+    //             kitting_part_details[part_details.quandrant].second = 9;
+    //             conveyor_set_quantity_for_this_part(part_details.part.type, part_details.part.color, -1);
+    //             insuf_part_kitting --;
+    //             }
+    //     }
+    //     }
     
     // for assenbly task
-    int insuf_part_assembly = 4;
+    // int insuf_part_assembly = 4;
   
-    // for assembly task
-    if(sizeof(current_order_.assembly_task.agv_numbers) == 2 && insuf_part_assembly != 0){
+    // // for assembly task
+    // if(sizeof(current_order_.assembly_task.agv_numbers) == 2 && insuf_part_assembly != 0){
 
-        int j = 0;
-        for(auto it = assembly_part_details.begin(); it != assembly_part_details.end() && j <2 ; it ++, j++)
-        {
-            it->first = current_order_.assembly_task.agv_numbers[j];
-            for (int i = 1; i <3; i++ ){
-             it->second[i] = std::make_pair(part.type, part.color);
-             insuf_part_assembly--;
-            }
+    //     int j = 0;
+    //     for(auto it = assembly_part_details.begin(); it != assembly_part_details.end() && j <2 ; it ++, j++)
+    //     {
+    //         it->first = current_order_.assembly_task.agv_numbers[j];
+    //         for (int i = 1; i <3; i++ ){
+    //          it->second[i] = std::make_pair(part.type, part.color);
+    //          insuf_part_assembly--;
+    //         }
             
-        }
-    } else if (sizeof(current_order_.assembly.agv_numbers) == 1 && insuf_part_assembly != 0){ 
-        assembly_part_details.begin()->first = current_order_.assembly_task.agv_numbers[0];
-        for (int i = 1; i <5; i++){
-            assembly_part_details.begin()->second[i] = std::make_pair(part.type, part.color);
-            insuf_part_assembly--;
-        }
-    }
+    //     }
+    // } else if (sizeof(current_order_.assembly.agv_numbers) == 1 && insuf_part_assembly != 0){ 
+    //     assembly_part_details.begin()->first = current_order_.assembly_task.agv_numbers[0];
+    //     for (int i = 1; i <5; i++){
+    //         assembly_part_details.begin()->second[i] = std::make_pair(part.type, part.color);
+    //         insuf_part_assembly--;
+    //     }
+    // }
 }
 
 void CompetitorControlSystem::floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg) 
@@ -188,77 +244,101 @@ void CompetitorControlSystem::floor_gripper_state_cb(const ariac_msgs::msg::Vacu
   floor_gripper_state_ = *msg;
 }
 
-void CompetitorControlSystem::FlooorRobotSendHome(){
-    RCLCPP_INFO_STREAM(get_logger(),"Moving Floor Robot to Home position")
+void CompetitorControlSystem::FloorRobotSendHome(){
+    RCLCPP_INFO_STREAM(get_logger(),"Moving Floor Robot to Home position");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
-bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, int agv_no){
+bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t agv_no){
     // Checking for parts in bins/tables using camera
-    RCLCPP_INFO (this->get_logger(),"Checking Tray Tables for Tray Id: %d : ", tray_id);
+    RCLCPP_INFO (this->get_logger(),"Checking Tray Tables for Tray Id: %d ", tray_id);
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Check if kit tray is on one of the two tables
     // geometry_msgs::msg::Pose tray_pose;
     std::string station;
     bool found_tray = false;
-    RCLCPP_INFO(this->get_logger()," Moving Robot to Tray Table");
-    RCLCPP_INFO (this->get_logger(),"Checking if the Floor Robot has Tray gripper: ");
+    RCLCPP_INFO(this->get_logger(),"Moving Robot to Tray Table");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO (this->get_logger(),"Checking if the Floor Robot has Tray gripper");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     if (floor_gripper_state_.type != "tray_gripper") {
         FloorRobotChangeGripper(station, "trays");
     }
     else {
-        RCLCPP_INFO(this->get_logger(),"Floor Robot gripper is correct.");
+        RCLCPP_INFO(this->get_logger(),"Floor Robot gripper is correct");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     }
     RCLCPP_INFO(this->get_logger(),"Moving to pickup tray ID: %d", tray_id);   
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     RCLCPP_INFO(this->get_logger(),"Placing tray on AGV ID: %d", agv_no);
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
 void CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::string gripper_type){
-    RCLCPP_INFO(this->get_logger(),"Changing Floor Robot Gripper " );
+    RCLCPP_INFO(this->get_logger(),"Changing Floor Robot Gripper to type '%s'", gripper_type.c_str() );
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
-bool CompetitorControlSystem::FloorRobotPickBinPart(int quadrant, std::pair<std::pair<int, int>, int> part){
-    int part_type = part.first.first;
-    int part_color = part.first.second;
-    int part_location = part.second;
+bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
+    uint8_t part_type = part.first.first;
+    uint8_t part_color = part.first.second;
+    uint8_t part_location = part.second;
+
     RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin "<< (std::to_string(part_location)));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Implement code to check both the bins status here to find the parts. Use the implemented dictionary.
     // print(" Reading Conveyor Status to check for part in Conveyor")
     // // Implement code to check Conveyor status to find the parts if not found here. Use the implemented dictionary.
 
-    RCLCPP_INFO_STREAM(get_logger(), "Attempting to pick a " <<PartColortoString(part_color) << " " << PartTypetoString(part_type));
-    RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: "<< std::to_string(part_location));
-    // Implement function to pickup part from the Bin Id
+
     RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Call function to change Robot Gripper
+
+    RCLCPP_INFO_STREAM(get_logger(), "Attempting to pick a " <<PartColortoString(part_color) << " " << PartTypetoString(part_type));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: "<< std::to_string(part_location));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // Implement function to pickup part from the Bin Id
 }
 
-void CompetitorControlSystem::FloorRobotPlacePartOnKitTray(int quadrant, std::pair<std::pair<int, int>, int> part,int tray_id, int agv_no ){
-    int part_type = part.first.first;
-    int part_color = part.first.second;
-    int part_location = part.second;
+void CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no ){
+    uint8_t part_type = part.first.first;
+    uint8_t part_color = part.first.second;
+    uint8_t part_location = part.second;
     RCLCPP_INFO_STREAM(get_logger()," Move robot to the AGV number :"<< (std::to_string(agv_no)));
-    RCLCPP_INFO_STREAM(get_logger()," Place"<< PartColortoString(part_color)<<" "<<PartTypetoString(part_type)<<" in quadrant "<<std::to_string(quadrant)<< "on the kit tray ID:"<< std::to_string(tray_id));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    
+    RCLCPP_INFO_STREAM(get_logger()," Place "<< PartColortoString(part_color)<<" "<<PartTypetoString(part_type)<<" in quadrant "<<std::to_string(quadrant)<< " on the kit tray ID: "<< std::to_string(tray_id));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
-void CompetitorControlSystem::MoveAGV(int agv, int destination){
+void CompetitorControlSystem::MoveAGV(uint8_t agv, uint8_t destination){
     RCLCPP_INFO_STREAM(get_logger(),"Locking Tray on AGV "<< std::to_string(agv));
-    RCLCPP_INFO_STREAM(get_logger(),"Moving AGV to "<< std::to_string(destination));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger(),"Moving AGV to "<< DestinationtoString(destination));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
 void CompetitorControlSystem::CeilingRobotSendHome(){
     RCLCPP_INFO_STREAM(get_logger(),"Moving Ceiling Robot to Home position");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
-void CompetitorControlSystem::CeilingRobotPickTrayPart(int quadrant, std::pair<std::pair<int, int>, int> part){
-    int part_type = part.first.first;
-    int part_color = part.first.second;
-    int part_location = part.second;
-    RCLCPP_INFO_STREAM(get_logger()," Checking AGV "<<PartColortoString(part_color)<< PartTypetoString(part_type)<< "location in tray ");
+void CompetitorControlSystem::CeilingRobotPickTrayPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
+    uint8_t part_type = part.first.first;
+    uint8_t part_color = part.first.second;
+    uint8_t part_location = part.second;
+    RCLCPP_INFO_STREAM(get_logger()," Checking AGV "<<PartColortoString(part_color)<<" "<<PartTypetoString(part_type)<< "location in tray ");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     RCLCPP_INFO_STREAM(get_logger(), "Attempting to pick " <<PartColortoString(part_color) << " " << PartTypetoString(part_type));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // RCLCPP_INFO_STREAM(get_logger()," Picked up part from Tray");
 }
 
 void CompetitorControlSystem::CeilingRobotPlacePartInInsert(){
-    RCLCPP_INFO_STREAM(get_logger()," Placing part in Inser for ");
+    RCLCPP_INFO_STREAM(get_logger()," Placing part in Insert");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
 int CompetitorControlSystem::AGVAvailable(){
@@ -278,7 +358,7 @@ bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task) // change ty
     return true;
 }
 
-// bool CompetitorControlSystem::CompleteAssemblyTask()
+// bool CompetitorControlSystem::CompleteAssemblyTask(AssemblyInfo task)
 // {   
 //     MoveAGV(task.agv_number, task.destination);
 //     CeilingRobotSendHome();
@@ -331,10 +411,10 @@ void CompetitorControlSystem::CompleteOrders(){
             }
         }
 
-        current_order_ = orders_.front();
+        OrderData current_order_ = orders_.front();
         orders_.erase(orders_.begin());
 
-        // CompetitorControlSystem::InsufficientPartsChallange()
+        CompetitorControlSystem::InsufficientPartsChallange(current_order_);
 
         if (current_order_.type == ariac_msgs::msg::Order::KITTING) {
         CompetitorControlSystem::CompleteKittingTask(current_order_.kitting);

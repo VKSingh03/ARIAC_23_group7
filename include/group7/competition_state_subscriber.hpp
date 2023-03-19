@@ -26,7 +26,7 @@ class CompetitorControlSystem:public rclcpp::Node
 {
 
 public:
-    // Constructor for class CompetitionStateSubscriber
+    // Constructor for class CompetitiorControlSystem
     CompetitorControlSystem(std::string node_name):Node(node_name)
     {   
         // Subscriber to competition state for Launching Competition
@@ -46,45 +46,45 @@ public:
         std::bind(&CompetitorControlSystem::bin_status_callback, this, std::placeholders::_1));
         // Subscriber to conveyor_status
         conveyor_state_subscriber = this->create_subscription<ariac_msgs::msg::ConveyorParts>("/ariac/conveyor_parts", 10, 
-        std::bind(&CompetitionStateSubscriber::conveyor_status_callback, this, std::placeholders::_1));
+        std::bind(&CompetitorControlSystem::conveyor_status_callback, this, std::placeholders::_1));
     }
 
     // Functions to complete specific tasks 
     // Function to get quantity of a particular part in the Bin
-    int bin_get_quantity_for_this_part(int bin, int part, int color);
+    int bin_get_quantity_for_this_part(uint8_t bin, uint8_t part, uint8_t color);
     // Function to update quantity for the given part on bin
-    void set_quantity_for_this_part(int bin, int part, int color, int value);
+    void bin_set_quantity_for_this_part(uint8_t bin, uint8_t part, uint8_t color, int value);
     // Function to update quantity for the given part on Conveyor
-    void conveyor_set_quantity_for_this_part(int part, int color, int value);
+    void conveyor_set_quantity_for_this_part(uint8_t part, uint8_t color, int value);
     // Function for completing orders
     void CompleteOrders();
     // Function for completing Kitting task
     bool CompleteKittingTask(KittingInfo task);
     // Function for completing Assembly task
-    void CompleteAssemblyTask();
+    void CompleteAssemblyTask(AssemblyInfo task);
     // Function for completing Combined task
-    void CompleteCombinedTask();
+    void CompleteCombinedTask(CombinedInfo task);
     // Function to complete Insufficient Parts Challange
-    void InsufficientPartsChallange();
+    void InsufficientPartsChallange(OrderData current_order_);
     // Function to Submit Orders
     bool SubmitOrder(std::string order_id);
     // Function to convert Part type to string
-    std::string PartTypetoString(int part_type);
+    std::string PartTypetoString(uint8_t part_type);
     // Function to convert Part colour to string
-    std::string PartColortoString(int part_color);
+    std::string PartColortoString(uint8_t part_color);
     // Function to convert Destination to string
-    std::string DestinationtoString(int dest);
+    std::string DestinationtoString(uint8_t dest);
     //Kitting Task Functions: 
-    void FloorRobotPlacePartOnKitTray(int quadrant, std::pair<std::pair<int, int>, int> part,int tray_id, int agv_no );
-    void MoveAGV(int agv, int destination);
-    bool FloorRobotPickBinPart(int quadrant, std::pair<std::pair<int, int>, int> part);
+    void FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
+    void MoveAGV(uint8_t agv, uint8_t destination);
+    bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     void FloorRobotChangeGripper(std::string station, std::string gripper_type);
-    bool FloorRobotSendHome();
-    bool FloorRobotPickandPlaceTray(int tray_id, int agv_no);
+    void FloorRobotSendHome();
+    bool FloorRobotPickandPlaceTray(int tray_id, uint8_t agv_no);
 
     // Assembly Task Functions: 
     void CeilingRobotSendHome();
-    void CeilingRobotPickTrayPart(int quadrant, std::pair<std::pair<int, int>, int> part);
+    void CeilingRobotPickTrayPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     void CeilingRobotPlacePartInInsert();
 
     //Combined Task Fumctioms: 
@@ -113,7 +113,7 @@ private:
     // Vector to store received orders based on priority
     std::vector<OrderData> orders_;
     // Variable to store current order
-    OrderData current_order_;
+    // OrderData current_order_(nullptr);
     // Gripper State
     ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
     // Variable to store position of first priority order in the vector
@@ -125,7 +125,7 @@ private:
     // To store conveyor read status
     int conveyor_read{0};
     // Data Structure to store and update bin data
-    std::map<int, std::map<int, std::map<int, int>>> bin_dictionary = {
+    std::map<uint8_t, std::map<uint8_t, std::map<uint8_t, uint8_t>>> bin_dictionary = {
     {1, {{10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}}},
     {2, {{10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
@@ -144,20 +144,20 @@ private:
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}}},
     };
     // Data Structure to store and update conveyor data
-    std::map<int, std::map<int, int>>conveyor_dictionary = {
+    std::map<uint8_t, std::map<uint8_t, uint8_t>>conveyor_dictionary = {
     {10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}};
     // Data structure to store kitting task plan
-    std::map<int, std::pair<std::pair<int, int>, int>> kitting_part_details = {
+    std::map<uint8_t, std::pair<std::pair<uint8_t, uint8_t>, uint8_t>> kitting_part_details = {
     {1 , std::make_pair(std::make_pair(0, 0), NULL)}, 
     {2 , std::make_pair(std::make_pair(0, 0), NULL)}, 
     {3 , std::make_pair(std::make_pair(0, 0), NULL)}, 
     {4 , std::make_pair(std::make_pair(0, 0), NULL)}};
 
     // Data Structure to store Assembly task
-    std::map<int, std::map<int, std::pair<int, int>>> assembly_part_details = {
+    std::map<uint8_t, std::map<uint8_t, std::pair<uint8_t, uint8_t>>> assembly_part_details = {
         {1, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
         {2, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}}};
 
