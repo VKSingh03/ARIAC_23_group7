@@ -65,7 +65,7 @@ public:
     // Function for completing Combined task
     void CompleteCombinedTask(CombinedInfo task);
     // Function to complete Insufficient Parts Challange
-    void InsufficientPartsChallange(OrderData current_order_);
+    bool InsufficientPartsChallange(OrderData current_order_);
     // Function to Submit Orders
     bool SubmitOrder(std::string order_id);
     // Function to convert Part type to string
