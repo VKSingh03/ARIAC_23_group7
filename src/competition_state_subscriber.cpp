@@ -166,8 +166,7 @@ void CompetitorControlSystem::ending_competition_callback(const ariac_msgs::msg:
 bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order_){
     
     if (current_order_.type == ariac_msgs::msg::Order::KITTING){
-        // for kitting task
-        // std::vector<std::pair<uint8_t,uint8_t>> missing_parts;
+        RCLCPP_INFO_STREAM(get_logger(),"Checking insufficient parts challange for Kitting task.");
         int insuf_part_kitting=4;
         for (auto j = 0; j < current_order_.kitting.kitting_parts.number_of_parts; j ++){
             for (int i =0; i<8; i++){
@@ -176,8 +175,7 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
                     kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = i;
                     bin_set_quantity_for_this_part(i, current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
-                    // RCLCPP_INFO_STREAM(get_logger(),"Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " in Bin: "<< kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second);
-                    }
+                }
             }
             if (insuf_part_kitting != 0){
                 if (conveyor_dictionary[current_order_.kitting.kitting_parts.parts_[j].type][current_order_.kitting.kitting_parts.parts_[j].color] >=1){
@@ -185,21 +183,17 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
                     kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = 9;
                     conveyor_set_quantity_for_this_part(current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
-                    // RCLCPP_INFO_STREAM(get_logger()," Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " on Conveyor: ");
-                }
-                // else
-                //     missing_parts.push_back(std::make_pair(current_order_.kitting.kitting_parts.parts_[j].type,current_order_.kitting.kitting_parts.parts_[j].color));
-                
+                }         
             }
         }
-        if (insuf_part_kitting != 0)
+        if (insuf_part_kitting != 0){
             RCLCPP_INFO_STREAM(get_logger()," Insufficient Parts to complete Kitting Order. Incomplete order will be submitted.");
             RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-            // for (auto i= 0; i< missing_parts.size(); i++){
-            //     RCLCPP_INFO_STREAM(get_logger()," Part unavailable '" <<PartColortoString(missing_parts[i].second) << "' '" << PartTypetoString(missing_parts[i].first)<<"'");
-            //     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-            // }
-
+        }
+        else{
+            RCLCPP_INFO_STREAM(get_logger()," Sufficient Parts available to complete Kitting Order.");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        }
     }
 
     else if(current_order_.type == ariac_msgs::msg::Order::ASSEMBLY){
@@ -224,10 +218,13 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
                 assembly_part_details[current_order_.assembly.agv_numbers[0]][4]= std::make_pair(current_order_.assembly.assembly_parts.parts_[3].type,current_order_.assembly.assembly_parts.parts_[3].color);  
                 insuf_part_assembly = 0;
         }
-        if (insuf_part_assembly != 0)
+        if (insuf_part_assembly != 0){
             RCLCPP_INFO_STREAM(get_logger()," Insufficient Parts to complete Assembly Order. Incomplete order will be submitted.");
             RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    }
+        } else{
+            RCLCPP_INFO_STREAM(get_logger()," Sufficient Parts available to complete Kitting Order.");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    }   }
 
     else if(current_order_.type == ariac_msgs::msg::Order::COMBINED){
         RCLCPP_INFO_STREAM(get_logger(),"Checking insufficient parts challange for Combined task.");
@@ -240,7 +237,6 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
                     kitting_part_details[insuf_part_kitting].second = i;
                     bin_set_quantity_for_this_part(i, current_order_.combined.combined_parts.parts_[j].type, current_order_.combined.combined_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
-                    // RCLCPP_INFO_STREAM(get_logger(),"Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " in Bin: "<< kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second);
                     }
             }
             if (insuf_part_kitting != 0){
@@ -249,7 +245,6 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
                     kitting_part_details[insuf_part_kitting].second = 9;
                     conveyor_set_quantity_for_this_part(current_order_.combined.combined_parts.parts_[j].type, current_order_.combined.combined_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
-                    // RCLCPP_INFO_STREAM(get_logger()," Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " on Conveyor: ");
                 }
             }
         }
@@ -315,15 +310,11 @@ bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<
 
     RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin : '"<< (std::to_string(part_location))<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    // Implement code to check both the bins status here to find the parts. Use the implemented dictionary.
-    // print(" Reading Conveyor Status to check for part in Conveyor")
-    // // Implement code to check Conveyor status to find the parts if not found here. Use the implemented dictionary.
 
     RCLCPP_INFO_STREAM(get_logger()," Attempting to pick a '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_location)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    // Implement function to pickup part from the Bin Id
 }
 
 void CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no ){
@@ -352,7 +343,7 @@ void CompetitorControlSystem::MoveAGVAsComb(uint8_t agv, uint8_t station){
 }
 
 void CompetitorControlSystem::CeilingRobotSendHome(){
-    RCLCPP_INFO_STREAM(get_logger(),"Moving Ceiling Robot to Home position");
+    RCLCPP_INFO_STREAM(get_logger()," Moving Ceiling Robot to Home position");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
@@ -428,7 +419,6 @@ bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
 
     std::string station;
     FloorRobotChangeGripper(station, "parts");
-    std::vector<std::pair<uint8_t,uint8_t>> successful_parts;
     RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Call function to change Robot Gripper
@@ -437,18 +427,8 @@ bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
         if(kit_part->second.second != NULL){
             FloorRobotPickBinPart(kit_part->first, kit_part->second);
             FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number);
-            successful_parts.push_back(std::make_pair(kit_part->second.first.first,kit_part->second.first.second));
         }
     }
-    for (auto i: task.kitting_parts.parts_){
-        for (auto j: successful_parts){
-            if ((i.type != j.first)  && (i.color != j.second)){
-                RCLCPP_INFO_STREAM(get_logger()," Part unavailable '" <<PartColortoString(i.color) << "' '" << PartTypetoString(i.type)<<"'");
-                RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-            }
-        }        
-    }
-
     MoveAGVkitting(task.agv_number, task.destination);
     return true;
 }
@@ -476,7 +456,6 @@ bool CompetitorControlSystem::CompleteCombinedTask(CombinedInfo task){
 
     FloorRobotSendHome();
     FloorRobotPickandPlaceTray(tray, agv);
-    std::vector<std::pair<uint8_t,uint8_t>> successful_parts;
     RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 
@@ -484,22 +463,8 @@ bool CompetitorControlSystem::CompleteCombinedTask(CombinedInfo task){
         if(kit_part->second.second != NULL){
             FloorRobotPickBinPart(kit_part->first, kit_part->second);
             FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,tray, agv);
-            successful_parts.push_back(std::make_pair(kit_part->second.first.first,kit_part->second.first.second));
-        }
-           
-        // else 
-        //     RCLCPP_INFO_STREAM(get_logger()," Part unavailable : '" <<PartColortoString(kit_part->second.first.second) << "' '" << PartTypetoString(kit_part->second.first.first));
-        //     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        }   
     }
-    for (auto i: task.combined_parts.parts_){
-            for (auto j: successful_parts){
-                if (std::make_pair(i.type,i.color) != j ){
-                    RCLCPP_INFO_STREAM(get_logger()," Part unavailable '" <<PartColortoString(i.color) << "' '" << PartTypetoString(i.type)<<"'");
-                    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-                }
-            }
-            
-        }
     RCLCPP_INFO_STREAM(get_logger()," Moving AGV to station : '" <<StationtoString(task.station)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");   
     
