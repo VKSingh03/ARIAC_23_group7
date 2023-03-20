@@ -71,7 +71,7 @@ void CompetitorControlSystem::competition_state_callback(const ariac_msgs::msg::
 }
 
 void CompetitorControlSystem::order_callback(const ariac_msgs::msg::Order::SharedPtr msg){   
-    RCLCPP_INFO_STREAM(this->get_logger(), "Received order Id: " << msg->id);
+    RCLCPP_INFO_STREAM(this->get_logger(), " Received order Id: " << msg->id);
     // Creating object of order_data to store current order
     OrderData order(msg); 
     //Storing order based on priority
@@ -79,12 +79,12 @@ void CompetitorControlSystem::order_callback(const ariac_msgs::msg::Order::Share
         orders_.insert(orders_.begin(),order);
         first_priority_order+=1;
         total_orders +=1; 
-        RCLCPP_INFO(this->get_logger(),"Added priority order '%s' to open orders", order.id.c_str());
+        RCLCPP_INFO(this->get_logger()," Added priority order '%s' to open orders", order.id.c_str());
     }
     else{
         orders_.push_back(order);
         total_orders += 1;
-        RCLCPP_INFO(this->get_logger(),"Added normal order '%s' to open orders", order.id.c_str());
+        RCLCPP_INFO(this->get_logger()," Added normal order '%s' to open orders", order.id.c_str());
     }
 }
 
@@ -396,22 +396,6 @@ void CompetitorControlSystem::CeilingRobotPickTrayPart(CombinedInfo task){
         }
         }
 
-// Functions will be updated in RWA3: 
-// void CompetitorControlSystem::CeilingRobotPlacePartInInsert(){
-//     RCLCPP_INFO_STREAM(get_logger()," Placing part in Insert");
-//     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-// }
-
-// int CompetitorControlSystem::AGVAvailable(){
-//     RCLCPP_INFO_STREAM(get_logger(),"Selecting available AGV and Tray for Combined task.");
-//     return 0;
-// }
-
-// int CompetitorControlSystem::TrayAvailable(){
-//     RCLCPP_INFO_STREAM(get_logger(),"Selecting available Tray for Combined task.");
-//     return 0;
-// }
-
 bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
 { 
     FloorRobotSendHome();
@@ -419,8 +403,8 @@ bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
 
     std::string station;
     FloorRobotChangeGripper(station, "parts");
-    RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
+    // RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Call function to change Robot Gripper
 
     for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
@@ -489,11 +473,11 @@ void CompetitorControlSystem::CompleteOrders(){
         if (orders_.size() == 0){
         if (competition_state_  != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE) {
             // wait for more orders
-            RCLCPP_INFO(get_logger(), "Waiting for orders...");
+            RCLCPP_INFO(get_logger(), " Waiting for orders...");
             while (orders_.size() == 0) {}
             } 
         else {
-            RCLCPP_INFO(get_logger(), "Completed all orders");
+            RCLCPP_INFO(get_logger(), " Completed all orders");
             success = true;
             break;
             }
