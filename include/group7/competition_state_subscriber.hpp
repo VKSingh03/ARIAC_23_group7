@@ -36,9 +36,6 @@ public:
         subscriber_ = this->create_subscription<ariac_msgs::msg::Order>("/ariac/orders", 10, 
         std::bind(&CompetitorControlSystem::order_callback, this, std::placeholders::_1));
         // Subscriber to Competition state for Order Submission
-        // order_submission_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
-        // std::bind(&CompetitorControlSystem::order_submission_callback, this, std::placeholders::_1));
-        // Subscriber to Competition state for Order Submission
         end_competition_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
         std::bind(&CompetitorControlSystem::ending_competition_callback, this, std::placeholders::_1));
         // Subscriber to bin_status
@@ -61,9 +58,9 @@ public:
     // Function for completing Kitting task
     bool CompleteKittingTask(KittingInfo task);
     // Function for completing Assembly task
-    void CompleteAssemblyTask(AssemblyInfo task);
+    bool CompleteAssemblyTask(AssemblyInfo task);
     // Function for completing Combined task
-    void CompleteCombinedTask(CombinedInfo task);
+    bool CompleteCombinedTask(CombinedInfo task);
     // Function to complete Insufficient Parts Challange
     bool InsufficientPartsChallange(OrderData current_order_);
     // Function to Submit Orders
@@ -74,9 +71,12 @@ public:
     std::string PartColortoString(uint8_t part_color);
     // Function to convert Destination to string
     std::string DestinationtoString(uint8_t dest);
+    // Function to conver Station to string
+    std::string StationtoString(uint8_t station);
     //Kitting Task Functions: 
     void FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
-    void MoveAGV(uint8_t agv, uint8_t destination);
+    void MoveAGVkitting(uint8_t agv, uint8_t destination);
+    void MoveAGVAsComb(uint8_t agv, uint8_t station);
     bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     void FloorRobotChangeGripper(std::string station, std::string gripper_type);
     void FloorRobotSendHome();
@@ -84,10 +84,12 @@ public:
 
     // Assembly Task Functions: 
     void CeilingRobotSendHome();
-    void CeilingRobotPickTrayPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
-    void CeilingRobotPlacePartInInsert();
+    void CeilingRobotPickTrayPart(AssemblyInfo task);
+    void CeilingRobotPickTrayPart(CombinedInfo task);
+    // void CeilingRobotPlacePartInInsert();
 
     //Combined Task Fumctioms: 
+    void CombinedTaskAssemblyUpdate(CombinedInfo task);
     int AGVAvailable();
 
 private:
@@ -96,8 +98,6 @@ private:
     rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr competition_state_subscriber; 
     // Subscriber to receive orders. 
     rclcpp::Subscription<ariac_msgs::msg::Order>::SharedPtr subscriber_; 
-    // Subscriber to read competition state ORDER_ANNOUNCEMENT_DONE
-    // rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr order_submission_subscriber; 
     // Subscriber to read Competition State & Order Submission and to implement EndCompetition Service client
     rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr end_competition_subscriber; 
     // Subscriber to bin status
@@ -143,12 +143,14 @@ private:
     {8, {{10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},{13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}}},
     };
+
     // Data Structure to store and update conveyor data
     std::map<uint8_t, std::map<uint8_t, uint8_t>>conveyor_dictionary = {
     {10, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {11, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}};
+
     // Data structure to store kitting task plan
     std::map<uint8_t, std::pair<std::pair<uint8_t, uint8_t>, uint8_t>> kitting_part_details = {
     {1 , std::make_pair(std::make_pair(0, 0), NULL)}, 
@@ -158,9 +160,11 @@ private:
 
     // Data Structure to store Assembly task
     std::map<uint8_t, std::map<uint8_t, std::pair<uint8_t, uint8_t>>> assembly_part_details = {
-        {1, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
-        {2, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}}};
-
+    {1, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
+    {2, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
+    {3, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
+    {4, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}}};
+    
     // Subscriber Callbacks.
     // Subscriber Callback to competition state
     void competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);

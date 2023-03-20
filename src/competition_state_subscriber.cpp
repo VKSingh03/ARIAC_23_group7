@@ -6,15 +6,6 @@
 # include <iostream>  
 
 std::string CompetitorControlSystem::DestinationtoString(uint8_t dest){
-    // if (dest == 1)
-    //     return "Assembly Front";
-    // else if (dest == 2)
-    //     return "Assembly Back";
-    // else if (dest == 2)
-    //     return "Warehouse";
-    // else
-    //     return "unknown";
-
     if (dest == ariac_msgs::msg::KittingTask::ASSEMBLY_FRONT)
         return "Assembly Front";
     else if (dest == ariac_msgs::msg::KittingTask::ASSEMBLY_BACK)
@@ -26,16 +17,6 @@ std::string CompetitorControlSystem::DestinationtoString(uint8_t dest){
 }
 
 std::string CompetitorControlSystem::PartTypetoString(uint8_t part_type){
-    // if (part_type == 10)
-    //     return "battery";
-    // else if (part_type == 11)
-    //     return "pump";
-    // else if (part_type == 13)
-    //     return "regulator";
-    // else if (part_type == 12)
-    //     return "sensor";
-    // else
-    //     return "unknown";
     if (part_type == ariac_msgs::msg::Part::BATTERY)
         return "battery";
     else if (part_type == ariac_msgs::msg::Part::PUMP)
@@ -49,18 +30,6 @@ std::string CompetitorControlSystem::PartTypetoString(uint8_t part_type){
 }
 
 std::string CompetitorControlSystem::PartColortoString(uint8_t part_color){
-    // if (part_color == 0)
-    //     return "red";
-    // else if (part_color == 1)
-    //     return "green";
-    // else if (part_color == 2)
-    //     return "blue";
-    // else if (part_color == 4)
-    //     return "purple";
-    // else if (part_color == 3)
-    //     return "orange";
-    // else
-    //     return "unknown";
     if (part_color == ariac_msgs::msg::Part::RED)
         return "red";
     else if (part_color == ariac_msgs::msg::Part::GREEN)
@@ -75,11 +44,24 @@ std::string CompetitorControlSystem::PartColortoString(uint8_t part_color){
         return "unknown";
 }
 
+std::string CompetitorControlSystem::StationtoString(uint8_t station){
+    if (station == ariac_msgs::msg::CombinedTask::AS1)
+        return "AS1";
+    else if (station == ariac_msgs::msg::CombinedTask::AS2)
+        return "AS2";
+    else if (station == ariac_msgs::msg::CombinedTask::AS3)
+        return "AS3";
+    else if (station == ariac_msgs::msg::CombinedTask::AS4)
+        return "AS4";
+    else
+        return "unknown";
+}
+
 void CompetitorControlSystem::competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     // Reading if competition state is READY
     competition_state_ = msg->competition_state;
     if(msg->competition_state == ariac_msgs::msg::CompetitionState::READY){
-        RCLCPP_INFO(this->get_logger(),"Reading CompetitionState READY :%d", msg->competition_state);
+        // RCLCPP_INFO(this->get_logger(),"Reading CompetitionState READY :%d", msg->competition_state);
         rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
         client = this->create_client<std_srvs::srv::Trigger>("/ariac/start_competition");
         auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
@@ -139,16 +121,14 @@ void CompetitorControlSystem::conveyor_status_callback(const ariac_msgs::msg::Co
     // This if statement is used to read the the conveyor topic only once. To be removed iN RWA3. 
     if(conveyor_read == 0){
         // add variable to update values here. 
+        RCLCPP_INFO_STREAM(get_logger(),"Reading Conveyor Part "<< PartTypetoString(msg->parts[0].part.type));
+        RCLCPP_INFO_STREAM(get_logger(),"Reading Conveyor Part "<< PartTypetoString(msg->parts[1].part.type));
         for( int i = 0; i<int(msg->parts.size()); i++){
             CompetitorControlSystem::conveyor_set_quantity_for_this_part(msg->parts[i].part.type, msg->parts[i].part.color, msg->parts[i].quantity);
-            // RCLCPP_INFO(this->get_logger(),"Added Bin Part %d", CompetitorControlSystem::bin_get_quantity_for_this_part(msg->bins[i].bin_number, msg->bins[i].parts[j].part.type, msg->bins[i].parts[j].part.color));
             RCLCPP_INFO(this->get_logger(),"Added Conveyor Part Quantity: %d", msg->parts[i].quantity);
             RCLCPP_INFO_STREAM(get_logger(),"Added Conveyor Part type:"<< PartTypetoString(msg->parts[i].part.type));
             RCLCPP_INFO_STREAM(get_logger(),"Added Conveyor Part Colour:"<< PartColortoString( msg->parts[i].part.color));
             }
-
-        RCLCPP_INFO_STREAM(get_logger(),"Reading Conveyor Part "<< PartTypetoString(msg->parts[0].part.type));
-        RCLCPP_INFO_STREAM(get_logger(),"Reading Conveyor Part "<< PartTypetoString(msg->parts[1].part.type));
         conveyor_read++;
     }
     
@@ -156,12 +136,16 @@ void CompetitorControlSystem::conveyor_status_callback(const ariac_msgs::msg::Co
 
 bool CompetitorControlSystem::SubmitOrder(std::string order_id)
 {
-  rclcpp::Client<ariac_msgs::srv::SubmitOrder>::SharedPtr client;
-  client = this->create_client<ariac_msgs::srv::SubmitOrder>("/ariac/submit_order");
-  auto request = std::make_shared<ariac_msgs::srv::SubmitOrder::Request>();
-  request->order_id = order_id;
-  auto result = client->async_send_request(request);
-  return result.get()->success;
+    rclcpp::Client<ariac_msgs::srv::SubmitOrder>::SharedPtr client;
+    client = this->create_client<ariac_msgs::srv::SubmitOrder>("/ariac/submit_order");
+    auto request = std::make_shared<ariac_msgs::srv::SubmitOrder::Request>();
+    request->order_id = order_id;
+    auto result = client->async_send_request(request);
+    RCLCPP_INFO_STREAM(get_logger()," Submitting Order  : " << order_id);
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    return result.get()->success;
 }
 
 void CompetitorControlSystem::ending_competition_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
@@ -183,9 +167,8 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
     
     if (current_order_.type == ariac_msgs::msg::Order::KITTING){
         // for kitting task
+        // std::vector<std::pair<uint8_t,uint8_t>> missing_parts;
         int insuf_part_kitting=4;
-        // auto j = 0;
-        RCLCPP_INFO(this->get_logger(), "Quantity of parts = %d", current_order_.kitting.kitting_parts.number_of_parts);
         for (auto j = 0; j < current_order_.kitting.kitting_parts.number_of_parts; j ++){
             for (int i =0; i<8; i++){
                 if (bin_dictionary[i][current_order_.kitting.kitting_parts.parts_[j].type][current_order_.kitting.kitting_parts.parts_[j].color] > 0 && insuf_part_kitting!= 0){
@@ -193,7 +176,7 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
                     kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = i;
                     bin_set_quantity_for_this_part(i, current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
-                    RCLCPP_INFO_STREAM(get_logger(),"Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " in Bin: "<< kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second);
+                    // RCLCPP_INFO_STREAM(get_logger(),"Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " in Bin: "<< kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second);
                     }
             }
             if (insuf_part_kitting != 0){
@@ -202,62 +185,87 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
                     kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = 9;
                     conveyor_set_quantity_for_this_part(current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
-                    RCLCPP_INFO_STREAM(get_logger()," Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " on Conveyor: ");
+                    // RCLCPP_INFO_STREAM(get_logger()," Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " on Conveyor: ");
                 }
+                // else
+                //     missing_parts.push_back(std::make_pair(current_order_.kitting.kitting_parts.parts_[j].type,current_order_.kitting.kitting_parts.parts_[j].color));
+                
             }
         }
         if (insuf_part_kitting != 0)
             RCLCPP_INFO_STREAM(get_logger()," Insufficient Parts to complete Kitting Order. Incomplete order will be submitted.");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+            // for (auto i= 0; i< missing_parts.size(); i++){
+            //     RCLCPP_INFO_STREAM(get_logger()," Part unavailable '" <<PartColortoString(missing_parts[i].second) << "' '" << PartTypetoString(missing_parts[i].first)<<"'");
+            //     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+            // }
+
     }
 
-    // else if(current_order_.type == ariac_msgs::msg::Order::ASSEMBLY){
-    //     int insuf_part_assembly = 4;
-    //     // for assembly task
-    //     if(sizeof(current_order_.assembly_task.agv_numbers) == 2 && insuf_part_assembly != 0){
-
-    //         int j = 0;
-    //         for(auto it = assembly_part_details.begin(); it != assembly_part_details.end() && j <2 ; it ++, j++)
-    //         {
-    //             it->first = current_order_.assembly_task.agv_numbers[j];
-    //             for (int i = 1; i <3; i++ ){
-    //             it->second[i] = std::make_pair(part.type, part.color);
-    //             insuf_part_assembly--;
-    //             }
+    else if(current_order_.type == ariac_msgs::msg::Order::ASSEMBLY){
+        RCLCPP_INFO_STREAM(get_logger(),"Checking insufficient parts challange for Assembly task.");
+        int insuf_part_assembly = 4;
+        // for assembly task
+        if(current_order_.assembly.agv_numbers.size() == 2 && insuf_part_assembly != 0){
+            
+                assembly_part_details[current_order_.assembly.agv_numbers[0]][1]= std::make_pair(current_order_.assembly.assembly_parts.parts_[0].type,current_order_.assembly.assembly_parts.parts_[0].color);
+                assembly_part_details[current_order_.assembly.agv_numbers[0]][2]= std::make_pair(current_order_.assembly.assembly_parts.parts_[1].type,current_order_.assembly.assembly_parts.parts_[1].color);
                 
-    //         }
-    //     } 
-    //     if (sizeof(current_order_.assembly.agv_numbers) == 1 && insuf_part_assembly != 0){ 
-    //         assembly_part_details.begin()->first = current_order_.assembly_task.agv_numbers[0];
-    //         for (int i = 1; i <5; i++){
-    //             assembly_part_details.begin()->second[i] = std::make_pair(part.type, part.color);
-    //             insuf_part_assembly--;
-    //         }
-    //     }
-    // }
+                assembly_part_details[current_order_.assembly.agv_numbers[1]][1]= std::make_pair(current_order_.assembly.assembly_parts.parts_[2].type,current_order_.assembly.assembly_parts.parts_[2].color);
+                assembly_part_details[current_order_.assembly.agv_numbers[1]][2]= std::make_pair(current_order_.assembly.assembly_parts.parts_[3].type,current_order_.assembly.assembly_parts.parts_[3].color);
 
-    // else if(current_order_.type == ariac_msgs::msg::Order::COMBINED){
-    //     RCLCPP_INFO_STREAM(get_logger(),"CHecking insufficient for Combined task.")
-    // }
-    // for (auto part_details:current_order_.kitting.kitting_parts.parts_){
-    //     for (uint8_t i =0; i<9; i++){
-    //        if (bin_dictionary[i][part_details.part.type][part_details.part.color] >=1 && insuf_part_kitting!= 0){
-    //             kitting_part_details[part_details.quandrant].first == std::make_pair(part_details.part.type,part_details.part.color);
-    //             kitting_part_details[part_details.quandrant].second = i;
-    //             bin_set_quantity_for_this_part(i, part_details.part.type, part_details.part.color, -1);
-    //             insuf_part_kitting --;
-    //             }
-    //     }
-    //     if (insuf_part_kitting != 0){
-    //         if (conveyor_dictionary[part_details.part.type][part_details.part.color] >=1){
-    //             kitting_part_details[part_details.quandrant].first == std::make_pair(part_details.part.type,part_details.part.color);
-    //             kitting_part_details[part_details.quandrant].second = 9;
-    //             conveyor_set_quantity_for_this_part(part_details.part.type, part_details.part.color, -1);
-    //             insuf_part_kitting --;
-    //             }
-    //     }
-    //     }
+                insuf_part_assembly = 0;
+            }
+
+        else if(current_order_.assembly.agv_numbers.size() == 1  && insuf_part_assembly != 0){             
+                assembly_part_details[current_order_.assembly.agv_numbers[0]][1]= std::make_pair(current_order_.assembly.assembly_parts.parts_[0].type,current_order_.assembly.assembly_parts.parts_[0].color);
+                assembly_part_details[current_order_.assembly.agv_numbers[0]][2]= std::make_pair(current_order_.assembly.assembly_parts.parts_[1].type,current_order_.assembly.assembly_parts.parts_[1].color);
+                assembly_part_details[current_order_.assembly.agv_numbers[0]][3]= std::make_pair(current_order_.assembly.assembly_parts.parts_[2].type,current_order_.assembly.assembly_parts.parts_[2].color);
+                assembly_part_details[current_order_.assembly.agv_numbers[0]][4]= std::make_pair(current_order_.assembly.assembly_parts.parts_[3].type,current_order_.assembly.assembly_parts.parts_[3].color);  
+                insuf_part_assembly = 0;
+        }
+        if (insuf_part_assembly != 0)
+            RCLCPP_INFO_STREAM(get_logger()," Insufficient Parts to complete Assembly Order. Incomplete order will be submitted.");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    }
+
+    else if(current_order_.type == ariac_msgs::msg::Order::COMBINED){
+        RCLCPP_INFO_STREAM(get_logger(),"Checking insufficient parts challange for Combined task.");
+        int insuf_part_kitting=4;
+        // RCLCPP_INFO(this->get_logger(), "Quantity of parts = %d", current_order_.kitting.kitting_parts.number_of_parts);
+        for (auto j = 0; j < current_order_.combined.combined_parts.number_of_parts; j ++){
+            for (int i =0; i<8; i++){
+                if (bin_dictionary[i][current_order_.combined.combined_parts.parts_[j].type][current_order_.combined.combined_parts.parts_[j].color] > 0 && insuf_part_kitting!= 0){
+                    kitting_part_details[insuf_part_kitting].first = std::make_pair(current_order_.combined.combined_parts.parts_[j].type,current_order_.combined.combined_parts.parts_[j].color);
+                    kitting_part_details[insuf_part_kitting].second = i;
+                    bin_set_quantity_for_this_part(i, current_order_.combined.combined_parts.parts_[j].type, current_order_.combined.combined_parts.parts_[j].color, -1);
+                    insuf_part_kitting --;
+                    // RCLCPP_INFO_STREAM(get_logger(),"Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " in Bin: "<< kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second);
+                    }
+            }
+            if (insuf_part_kitting != 0){
+                if (conveyor_dictionary[current_order_.combined.combined_parts.parts_[j].type][current_order_.combined.combined_parts.parts_[j].color] >=1){
+                    kitting_part_details[insuf_part_kitting].first = std::make_pair(current_order_.combined.combined_parts.parts_[j].type,current_order_.combined.combined_parts.parts_[j].color);
+                    kitting_part_details[insuf_part_kitting].second = 9;
+                    conveyor_set_quantity_for_this_part(current_order_.combined.combined_parts.parts_[j].type, current_order_.combined.combined_parts.parts_[j].color, -1);
+                    insuf_part_kitting --;
+                    // RCLCPP_INFO_STREAM(get_logger()," Added Bin Part type:"<< PartTypetoString(kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.first) <<" Colour: "<< PartColortoString((kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first.second))<< " on Conveyor: ");
+                }
+            }
+        }
+        if (insuf_part_kitting != 0)
+            RCLCPP_INFO_STREAM(get_logger()," Insufficient Parts to complete Combined Order. Incomplete order will be submitted.");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    }
     
     return true;
+}
+
+void CompetitorControlSystem::CombinedTaskAssemblyUpdate(CombinedInfo task){   
+    assembly_part_details[task.station][1]= std::make_pair(task.combined_parts.parts_[0].type,task.combined_parts.parts_[0].color);
+    assembly_part_details[task.station][2]= std::make_pair(task.combined_parts.parts_[1].type,task.combined_parts.parts_[1].color);
+    assembly_part_details[task.station][3]= std::make_pair(task.combined_parts.parts_[2].type,task.combined_parts.parts_[2].color);
+    assembly_part_details[task.station][4]= std::make_pair(task.combined_parts.parts_[3].type,task.combined_parts.parts_[3].color);  
 }
 
 void CompetitorControlSystem::floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg) 
@@ -272,7 +280,7 @@ void CompetitorControlSystem::FloorRobotSendHome(){
 
 bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t agv_no){
     // Checking for parts in bins/tables using camera
-    RCLCPP_INFO (this->get_logger()," Checking Tray Tables for Tray Id: %d ", tray_id);
+    RCLCPP_INFO (this->get_logger()," Checking Tray Tables for Tray Id: '%d' ", tray_id);
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Check if kit tray is on one of the two tables
     // geometry_msgs::msg::Pose tray_pose;
@@ -289,9 +297,9 @@ bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t ag
         RCLCPP_INFO(this->get_logger()," Floor Robot gripper is correct");
         RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     }
-    RCLCPP_INFO(this->get_logger()," Moving to pickup tray ID: %d", tray_id);   
+    RCLCPP_INFO(this->get_logger()," Moving to pickup tray ID: '%d'", tray_id);   
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    RCLCPP_INFO(this->get_logger()," Placing tray on AGV ID: %d", agv_no);
+    RCLCPP_INFO(this->get_logger()," Placing tray on AGV ID: '%d'", agv_no);
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
@@ -305,15 +313,15 @@ bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<
     uint8_t part_color = part.first.second;
     uint8_t part_location = part.second;
 
-    RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin "<< (std::to_string(part_location)));
+    RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin : '"<< (std::to_string(part_location))<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Implement code to check both the bins status here to find the parts. Use the implemented dictionary.
     // print(" Reading Conveyor Status to check for part in Conveyor")
     // // Implement code to check Conveyor status to find the parts if not found here. Use the implemented dictionary.
 
-    RCLCPP_INFO_STREAM(get_logger()," Attempting to pick a " <<PartColortoString(part_color) << " " << PartTypetoString(part_type));
+    RCLCPP_INFO_STREAM(get_logger()," Attempting to pick a '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: "<< std::to_string(part_location));
+    RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_location)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Implement function to pickup part from the Bin Id
 }
@@ -322,17 +330,24 @@ void CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
     uint8_t part_location = part.second;
-    RCLCPP_INFO_STREAM(get_logger()," Move robot to the AGV number :"<< (std::to_string(agv_no)));
+    RCLCPP_INFO_STREAM(get_logger()," Move robot to the AGV number : '"<< (std::to_string(agv_no))<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     
-    RCLCPP_INFO_STREAM(get_logger()," Place "<< PartColortoString(part_color)<<" "<<PartTypetoString(part_type)<<" in quadrant "<<std::to_string(quadrant)<< " on the kit tray ID: "<< std::to_string(tray_id));
+    RCLCPP_INFO_STREAM(get_logger()," Place '"<< PartColortoString(part_color)<<"' '"<<PartTypetoString(part_type)<<"' in quadrant '"<<std::to_string(quadrant)<< "' on the kit tray ID: '"<< std::to_string(tray_id)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
-void CompetitorControlSystem::MoveAGV(uint8_t agv, uint8_t destination){
-    RCLCPP_INFO_STREAM(get_logger(),"Locking Tray on AGV "<< std::to_string(agv));
+void CompetitorControlSystem::MoveAGVkitting(uint8_t agv, uint8_t destination){
+    RCLCPP_INFO_STREAM(get_logger()," Locking Tray on AGV : '"<< std::to_string(agv)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    RCLCPP_INFO_STREAM(get_logger(),"Moving AGV to "<< DestinationtoString(destination));
+    RCLCPP_INFO_STREAM(get_logger()," Moving AGV '"<< std::to_string(agv)<<"' to '"<< DestinationtoString(destination)<<"'");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+}
+
+void CompetitorControlSystem::MoveAGVAsComb(uint8_t agv, uint8_t station){
+    RCLCPP_INFO_STREAM(get_logger()," Locking Tray on AGV "<< std::to_string(agv));
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger()," Moving AGV "<< std::to_string(agv)<<"to "<< StationtoString(station));
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
@@ -341,37 +356,79 @@ void CompetitorControlSystem::CeilingRobotSendHome(){
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
-void CompetitorControlSystem::CeilingRobotPickTrayPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
-    uint8_t part_type = part.first.first;
-    uint8_t part_color = part.first.second;
-    uint8_t part_location = part.second;
-    RCLCPP_INFO_STREAM(get_logger()," Checking AGV "<<PartColortoString(part_color)<<" "<<PartTypetoString(part_type)<< "location in tray ");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    RCLCPP_INFO_STREAM(get_logger(), "Attempting to pick " <<PartColortoString(part_color) << " " << PartTypetoString(part_type));
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    // RCLCPP_INFO_STREAM(get_logger()," Picked up part from Tray");
+void CompetitorControlSystem::CeilingRobotPickTrayPart(AssemblyInfo task){
+    
+    uint8_t part_location = task.station;
+        RCLCPP_INFO_STREAM(get_logger()," Moving AGV '"<< std::to_string(task.station)<<"' to station: '"<<StationtoString(task.station)<<"'");
+        if(task.agv_numbers.size() == 2){
+        for (int j = 0; j < 2; j++){
+            for (int i = 1; i <3; i++){
+        uint8_t part_type = assembly_part_details[task.agv_numbers[j]][i].first;
+        uint8_t part_color = assembly_part_details[task.agv_numbers[j]][i].second;
+        RCLCPP_INFO_STREAM(get_logger()," Checking AGV for '"<<PartColortoString(part_color)<<"' '"<<PartTypetoString(part_type)<< "' location in tray ");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        RCLCPP_INFO_STREAM(get_logger()," Picking up '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        RCLCPP_INFO_STREAM(get_logger()," Placing '"<<PartColortoString(part_color) << "' '" << PartTypetoString(part_type) << "' in Insert frame as per given pose and direction");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        }
+        }
+        }
+
+        else if (task.agv_numbers.size() == 1){
+        for (int i = 1; i <5; i++){
+        uint8_t part_type = assembly_part_details[task.agv_numbers[0]][i].first;
+        uint8_t part_color = assembly_part_details[task.agv_numbers[0]][i].second;
+        RCLCPP_INFO_STREAM(get_logger()," Checking AGV for '"<<PartColortoString(part_color)<<"' '"<<PartTypetoString(part_type)<< "' location in tray ");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        RCLCPP_INFO_STREAM(get_logger()," Picking up '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        RCLCPP_INFO_STREAM(get_logger()," Placing '"<<PartColortoString(part_color) << "' '" << PartTypetoString(part_type) << "' in Insert frame as per given pose and direction");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        }
+        }
 }
 
-void CompetitorControlSystem::CeilingRobotPlacePartInInsert(){
-    RCLCPP_INFO_STREAM(get_logger()," Placing part in Insert");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-}
+void CompetitorControlSystem::CeilingRobotPickTrayPart(CombinedInfo task){
+    
+    uint8_t part_location = task.station;
+    CombinedTaskAssemblyUpdate(task);
+        for (int i = 1; i <5; i++){
+        uint8_t part_type = assembly_part_details[task.station][i].first;
+        uint8_t part_color = assembly_part_details[task.station][i].second;
+        RCLCPP_INFO_STREAM(get_logger()," Checking AGV for '"<<PartColortoString(part_color)<<"' '"<<PartTypetoString(part_type)<< "' location in tray ");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        RCLCPP_INFO_STREAM(get_logger()," Picking up '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        RCLCPP_INFO_STREAM(get_logger()," Placing '"<<PartColortoString(part_color) << "' '" << PartTypetoString(part_type) << "' in Insert frame as per given pose and direction");
+        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        }
+        }
 
-int CompetitorControlSystem::AGVAvailable(){
-    RCLCPP_INFO_STREAM(get_logger(),"Selecting available AGV here.");
-    return 0;
-}
+// Functions will be updated in RWA3: 
+// void CompetitorControlSystem::CeilingRobotPlacePartInInsert(){
+//     RCLCPP_INFO_STREAM(get_logger()," Placing part in Insert");
+//     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+// }
 
-// bool PrintInsuffPartKitting(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part)
+// int CompetitorControlSystem::AGVAvailable(){
+//     RCLCPP_INFO_STREAM(get_logger(),"Selecting available AGV and Tray for Combined task.");
+//     return 0;
+// }
 
-bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task) // change type of receiving variable
+// int CompetitorControlSystem::TrayAvailable(){
+//     RCLCPP_INFO_STREAM(get_logger(),"Selecting available Tray for Combined task.");
+//     return 0;
+// }
+
+bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
 { 
     FloorRobotSendHome();
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
 
     std::string station;
     FloorRobotChangeGripper(station, "parts");
-
+    std::vector<std::pair<uint8_t,uint8_t>> successful_parts;
     RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Call function to change Robot Gripper
@@ -380,49 +437,83 @@ bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task) // change ty
         if(kit_part->second.second != NULL){
             FloorRobotPickBinPart(kit_part->first, kit_part->second);
             FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number);
-        }   
-        else 
-            // PrintInsuffPartKitting(kit_part->second.first.second, kit_part->second.first.first)
-            RCLCPP_INFO_STREAM(get_logger()," Part unavailable" <<PartColortoString(kit_part->second.first.first) << " " << PartTypetoString(kit_part->second.first.second));
-            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+            successful_parts.push_back(std::make_pair(kit_part->second.first.first,kit_part->second.first.second));
+        }
     }
-    MoveAGV(task.agv_number, task.destination);
+    for (auto i: task.kitting_parts.parts_){
+        for (auto j: successful_parts){
+            if ((i.type != j.first)  && (i.color != j.second)){
+                RCLCPP_INFO_STREAM(get_logger()," Part unavailable '" <<PartColortoString(i.color) << "' '" << PartTypetoString(i.type)<<"'");
+                RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+            }
+        }        
+    }
+
+    MoveAGVkitting(task.agv_number, task.destination);
     return true;
 }
 
-// bool CompetitorControlSystem::CompleteAssemblyTask(AssemblyInfo task)
-// {   
-//     MoveAGV(task.agv_number, task.destination);
-//     CeilingRobotSendHome();
-//     for (auto assembly_part: task.part){
-//         CeilingRobotPickTrayPart(Insert_variables_here);
-//         CeilingRobotPlacePartInInsert(Insert_variables_here);
-//     }
-//     return true;
-// }
+bool CompetitorControlSystem::CompleteAssemblyTask(AssemblyInfo task)
+{   
+    for ( int j = 0; j <(task.agv_numbers.size()); j++){
+        MoveAGVAsComb(task.agv_numbers[j], task.station);
+    }
+    CeilingRobotSendHome();
+    CeilingRobotPickTrayPart(task);
+    return true;
+}
 
-// bool CompetitorControlSystem::CompleteCombinedTask(){
-//     FloorRobotSendHome();
-//     agv = AGVAvailable();
-//     FloorRobotSendHome();
-//     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
-//     for (auto kit_part = kitting_part_details.begin(), kit_part != kitting_part_details.end(), kit_part++){
-//         FloorRobotPickBinPart(kit_part->first, kit_part->second);
-//         FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number);
-//     }
-//     MoveAGV(task.agv_number, task.destination);
-//     CeilingRobotSendHome();
-//     for (auto assembly_part: task.parts){
-//         CeilingRobotPickTrayPart(Insert_variables_here);
-//         CeilingRobotPlacePartInInsert(Insert_variables_here);
-//     }
-//     return true;
-// }
+bool CompetitorControlSystem::CompleteCombinedTask(CombinedInfo task){
+
+    FloorRobotSendHome();
+    uint8_t agv = task.station;
+    int tray = 1;
+
+    RCLCPP_INFO_STREAM(get_logger()," Choosing AGV : '"<< std::to_string(agv) << "' and Tray ID: '"<< std::to_string(tray)<<"' for combined task");
+    // Functions will be updated during RWA3
+    // agv = AGVAvailable(task.station);
+    // tray = TrayAvailable(task.station);
+
+    FloorRobotSendHome();
+    FloorRobotPickandPlaceTray(tray, agv);
+    std::vector<std::pair<uint8_t,uint8_t>> successful_parts;
+    RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+
+    for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
+        if(kit_part->second.second != NULL){
+            FloorRobotPickBinPart(kit_part->first, kit_part->second);
+            FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,tray, agv);
+            successful_parts.push_back(std::make_pair(kit_part->second.first.first,kit_part->second.first.second));
+        }
+           
+        // else 
+        //     RCLCPP_INFO_STREAM(get_logger()," Part unavailable : '" <<PartColortoString(kit_part->second.first.second) << "' '" << PartTypetoString(kit_part->second.first.first));
+        //     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    }
+    for (auto i: task.combined_parts.parts_){
+            for (auto j: successful_parts){
+                if (std::make_pair(i.type,i.color) != j ){
+                    RCLCPP_INFO_STREAM(get_logger()," Part unavailable '" <<PartColortoString(i.color) << "' '" << PartTypetoString(i.type)<<"'");
+                    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+                }
+            }
+            
+        }
+    RCLCPP_INFO_STREAM(get_logger()," Moving AGV to station : '" <<StationtoString(task.station)<<"'");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");   
+    
+    CeilingRobotSendHome();
+    CeilingRobotPickTrayPart(task);
+
+    return true;
+}
 
 void CompetitorControlSystem::CompleteOrders(){
-    // Wait for first order to be published
+    // Wait for first order to be published and status of bins and conveyor is read.
     while (orders_.size() == 0) {}
-
+    while (bin_read == 0) {}
+    while (conveyor_read == 0) {}
     bool success;
     while (true) {
         if (competition_state_ == ariac_msgs::msg::CompetitionState::ENDED) {
@@ -445,43 +536,39 @@ void CompetitorControlSystem::CompleteOrders(){
 
         OrderData current_order_ = orders_.front();
         orders_.erase(orders_.begin());
-        
-        bool insuf_parts = false;
-        while(insuf_parts == false)
-            insuf_parts = CompetitorControlSystem::InsufficientPartsChallange(current_order_);
+        total_orders--; 
+
+        // Insufficient Parts challange
+        CompetitorControlSystem::InsufficientPartsChallange(current_order_);
 
         if (current_order_.type == ariac_msgs::msg::Order::KITTING) {
             CompetitorControlSystem::CompleteKittingTask(current_order_.kitting);
             // Submit order
             CompetitorControlSystem::SubmitOrder(current_order_.id);
-        // } else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY) {
-        // CompetitorControlSystem::CompleteAssemblyTask(current_order_.assembly);
-        // // Submit order
-        // CompetitorControlSystem::SubmitOrder(current_order_.id);
-        // } else if (current_order_.type == ariac_msgs::msg::Order::COMBINED) {
-        // CompetitorControlSystem::CompleteCombinedTask(current_order_.combined);
-        // Submit order
-        // CompetitorControlSystem::SubmitOrder(current_order_.id);
-        // }
+        } 
+        else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY) {
+            CompetitorControlSystem::CompleteAssemblyTask(current_order_.assembly);
+            // Submit order
+            CompetitorControlSystem::SubmitOrder(current_order_.id);
+        }
+        else if (current_order_.type == ariac_msgs::msg::Order::COMBINED) {
+            CompetitorControlSystem::CompleteCombinedTask(current_order_.combined);
+            // Submit order
+            CompetitorControlSystem::SubmitOrder(current_order_.id);
+        }
         }
     }
-}
 
 int main(int argc, char *argv[]){
     rclcpp::init(argc,argv);
     auto competitor_control_system = std::make_shared<CompetitorControlSystem>("CCS");
     rclcpp::executors::MultiThreadedExecutor executor;
     executor.add_node(competitor_control_system);
-    // node->StartCompetition();
-    // executor.spin();
     std::thread([&executor]()
                 { executor.spin(); })
         .detach();
-    // competitor_control_system->CompetitorControlSystem();
 
     competitor_control_system->CompleteOrders();
-
-    // rclcpp::spin(comp_state_subscriber);
     rclcpp::shutdown();
 }
 
