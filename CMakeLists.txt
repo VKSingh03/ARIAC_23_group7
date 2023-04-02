@@ -10,15 +10,16 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(ariac_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
 
 include_directories(include/group7)
 
 add_executable(group7_start_competition src/competition_state_subscriber.cpp)
-ament_target_dependencies(group7_start_competition rclcpp ariac_msgs std_srvs) 
+ament_target_dependencies(group7_start_competition rclcpp ariac_msgs std_srvs moveit_ros_planning_interface geometry_msgs) 
 
 install(TARGETS group7_start_competition DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY include DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY include config DESTINATION share/${PROJECT_NAME})
 
 # if(BUILD_TESTING)
 #   find_package(ament_lint_auto REQUIRED)

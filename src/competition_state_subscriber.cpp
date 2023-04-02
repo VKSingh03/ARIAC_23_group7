@@ -57,6 +57,48 @@ std::string CompetitorControlSystem::StationtoString(uint8_t station){
         return "unknown";
 }
 
+void CompetitorControlSystem::kts1_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg){
+    if (!kts1_camera_recieved_data) {
+        RCLCPP_INFO(this->get_logger(), "Received data from kts1 camera");
+        kts1_camera_recieved_data = true;
+    }
+    
+    kts1_trays_ = msg->tray_poses;
+    kts1_camera_pose_ = msg->sensor_pose;
+}
+
+void CompetitorControlSystem::kts2_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg){
+    if (!kts2_camera_recieved_data) {
+        RCLCPP_INFO(this->get_logger(), "Received data from kts2 camera");
+        kts2_camera_recieved_data = true;
+    }
+
+    kts2_trays_ = msg->tray_poses;
+    kts2_camera_pose_ = msg->sensor_pose;
+}
+
+void CompetitorControlSystem::left_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg) 
+{
+  if (!left_bins_camera_recieved_data) {
+    RCLCPP_INFO(this->get_logger(), "Received data from left bins camera");
+    left_bins_camera_recieved_data = true;
+  }
+
+  left_bins_parts_ = msg->part_poses;
+  left_bins_camera_pose_ = msg->sensor_pose;
+}
+
+void CompetitorControlSystem::right_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg) 
+{
+  if (!right_bins_camera_recieved_data) {
+    RCLCPP_INFO(this->get_logger(), "Received data from right bins camera");
+    right_bins_camera_recieved_data = true;
+  }
+
+  right_bins_parts_ = msg->part_poses;
+  right_bins_camera_pose_ = msg->sensor_pose;
+}
+
 void CompetitorControlSystem::competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     // Reading if competition state is READY
     competition_state_ = msg->competition_state;
@@ -271,6 +313,23 @@ void CompetitorControlSystem::floor_gripper_state_cb(const ariac_msgs::msg::Vacu
 void CompetitorControlSystem::FloorRobotSendHome(){
     RCLCPP_INFO_STREAM(get_logger()," Moving Floor Robot to Home position");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // Move floor robot to home joint state
+    floor_robot_.setNamedTarget("home");
+    FloorRobotMovetoTarget();
+}
+
+bool TestCompetitor::FloorRobotMovetoTarget()
+{
+  moveit::planning_interface::MoveGroupInterface::Plan plan;
+  bool success = static_cast<bool>(floor_robot_.plan(plan));
+
+  if (success) {
+    return static_cast<bool>(floor_robot_.execute(plan));
+  } else {
+    RCLCPP_ERROR(get_logger(), "Unable to generate plan");
+    return false;
+  }
+
 }
 
 bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t agv_no){
