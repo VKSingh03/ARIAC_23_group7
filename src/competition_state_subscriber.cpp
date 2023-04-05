@@ -318,7 +318,9 @@ void CompetitorControlSystem::FloorRobotSendHome(){
     FloorRobotMovetoTarget();
 }
 
-bool TestCompetitor::FloorRobotMovetoTarget()
+
+
+bool CompetitorControlSystem::FloorRobotMovetoTarget()
 {
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success = static_cast<bool>(floor_robot_.plan(plan));
@@ -332,18 +334,196 @@ bool TestCompetitor::FloorRobotMovetoTarget()
 
 }
 
+geometry_msgs::msg::Pose CompetitorControlSystem::MultiplyPose(geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2)
+{
+    KDL::Frame f1;
+    KDL::Frame f2;
+
+    tf2::fromMsg(p1, f1);
+    tf2::fromMsg(p2, f2);
+
+    KDL::Frame f3 = f1*f2;
+    
+    return tf2::toMsg(f3);
+}
+
+double CompetitorControlSystem::GetYaw(geometry_msgs::msg::Pose pose)
+{
+    tf2::Quaternion q(
+        pose.orientation.x,
+        pose.orientation.y,
+        pose.orientation.z,
+        pose.orientation.w);
+    tf2::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+
+    return yaw;
+}
+
+bool CompetitorControlSystem::FloorRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf)
+{
+    moveit_msgs::msg::RobotTrajectory trajectory;
+
+    double path_fraction = floor_robot_.computeCartesianPath(waypoints, 0.01, 0.0, trajectory);
+
+    if (path_fraction < 0.9) {
+        RCLCPP_ERROR(get_logger(), "Unable to generate trajectory through waypoints");
+        return false;
+    }
+        
+    // Retime trajectory 
+    robot_trajectory::RobotTrajectory rt(floor_robot_.getCurrentState()->getRobotModel(), "floor_robot");
+    rt.setRobotTrajectoryMsg(*floor_robot_.getCurrentState(), trajectory);
+    totg_.computeTimeStamps(rt, vsf, asf);
+    rt.getRobotTrajectoryMsg(trajectory);
+
+    return static_cast<bool>(floor_robot_.execute(trajectory));
+}
+
+geometry_msgs::msg::Quaternion CompetitorControlSystem::FloorRobotSetOrientation(double rotation)
+{
+    tf2::Quaternion tf_q;
+    tf_q.setRPY(0, 3.14159, rotation);
+    
+    geometry_msgs::msg::Quaternion q;
+
+    q.x = tf_q.x();
+    q.y = tf_q.y();
+    q.z = tf_q.z();
+    q.w = tf_q.w();
+
+    return q; 
+}
+
+void CompetitorControlSystem::FloorRobotWaitForAttach(double timeout){
+    // Wait for part to be attached
+    rclcpp::Time start = now();
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose;
+
+    while (!floor_gripper_state_.attached) {
+        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Waiting for gripper attach");
+
+        waypoints.clear();
+        starting_pose.position.z -= 0.001;
+        waypoints.push_back(starting_pose);
+
+        FloorRobotMoveCartesian(waypoints, 0.1, 0.1);
+
+        usleep(200);
+
+        if (now() - start > rclcpp::Duration::from_seconds(timeout)){
+        RCLCPP_ERROR(get_logger(), "Unable to pick up object");
+        return;
+        }
+    }
+}
+
+bool CompetitorControlSystem::FloorRobotSetGripperState(bool enable)
+{
+    if (floor_gripper_state_.enabled == enable) {
+        if (floor_gripper_state_.enabled)
+            RCLCPP_INFO(get_logger(), "Already enabled");
+        else 
+            RCLCPP_INFO(get_logger(), "Already disabled");
+        
+        return false;
+    }
+    // Call enable service
+    auto request = std::make_shared<ariac_msgs::srv::VacuumGripperControl::Request>();
+    request->enable = enable;
+
+    auto result = floor_robot_gripper_enable_->async_send_request(request);
+    result.wait();
+
+    if (!result.get()->success) {
+        RCLCPP_ERROR(get_logger(), "Error calling gripper enable service");
+        return false;
+    }
+
+    return true;
+}
+
+void TestCompetitor::AddModelToPlanningScene(std::string name, std::string mesh_file, geometry_msgs::msg::Pose model_pose)
+{
+  moveit_msgs::msg::CollisionObject collision;
+
+  collision.id = name;
+  collision.header.frame_id = "world";
+
+  shape_msgs::msg::Mesh mesh;
+  shapes::ShapeMsg mesh_msg;
+  
+  std::string package_share_directory = ament_index_cpp::get_package_share_directory("test_competitor");
+  std::stringstream path;
+  path << "file://" << package_share_directory << "/meshes/" << mesh_file;
+  std::string model_path = path.str();
+
+  shapes::Mesh *m = shapes::createMeshFromResource(model_path);
+  shapes::constructMsgFromShape(m, mesh_msg);
+
+  mesh = boost::get<shape_msgs::msg::Mesh>(mesh_msg);
+
+  collision.meshes.push_back(mesh);
+  collision.mesh_poses.push_back(model_pose);
+
+  collision.operation = collision.ADD;
+
+  std::vector<moveit_msgs::msg::CollisionObject> collision_objects;
+  collision_objects.push_back(collision);
+
+  planning_scene_.addCollisionObjects(collision_objects);
+}
+
 bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t agv_no){
     // Checking for parts in bins/tables using camera
     RCLCPP_INFO (this->get_logger()," Checking Tray Tables for Tray Id: '%d' ", tray_id);
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+
     // Check if kit tray is on one of the two tables
-    // geometry_msgs::msg::Pose tray_pose;
+    geometry_msgs::msg::Pose tray_pose;
     std::string station;
     bool found_tray = false;
+
+    // Check table 1
+    for (auto tray: kts1_trays_) {
+        if (tray.id == tray_id) {
+        station = "kts1";
+        tray_pose = MultiplyPose(kts1_camera_pose_, tray.pose);
+        found_tray = true;
+        break;
+        }
+    }
+    // Check table 2
+    if (!found_tray) {
+        for (auto tray: kts2_trays_) {
+        if (tray.id == tray_id) {
+            station = "kts2";
+            tray_pose = MultiplyPose(kts2_camera_pose_, tray.pose);
+            found_tray = true;
+            break;
+        }
+        }
+    }
+    if (!found_tray)
+        return false;
+
+    double tray_rotation = GetYaw(tray_pose);
+
     RCLCPP_INFO(this->get_logger()," Moving Robot to Tray Table");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+        // Move floor robot to the corresponding kit tray table
+    if (station == "kts1") {
+        floor_robot_.setJointValueTarget(floor_kts1_js_);
+    } else {
+        floor_robot_.setJointValueTarget(floor_kts2_js_);
+    }
+    FloorRobotMovetoTarget();
+
     RCLCPP_INFO (this->get_logger()," Checking if the Floor Robot has Tray gripper");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // Change gripper to tray gripper
     if (floor_gripper_state_.type != "tray_gripper") {
         FloorRobotChangeGripper(station, "trays");
     }
@@ -351,15 +531,124 @@ bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t ag
         RCLCPP_INFO(this->get_logger()," Floor Robot gripper is correct");
         RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     }
+
+    // Move to tray
     RCLCPP_INFO(this->get_logger()," Moving to pickup tray ID: '%d'", tray_id);   
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    waypoints.push_back(BuildPose(tray_pose.position.x, tray_pose.position.y, 
+        tray_pose.position.z + 0.2, FloorRobotSetOrientation(tray_rotation)));
+    waypoints.push_back(BuildPose(tray_pose.position.x, tray_pose.position.y, 
+        tray_pose.position.z + pick_offset_, FloorRobotSetOrientation(tray_rotation)));
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+    FloorRobotSetGripperState(true);
+    FloorRobotWaitForAttach(3.0);
+
     RCLCPP_INFO(this->get_logger()," Placing tray on AGV ID: '%d'", agv_no);
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    
+    // Add kit tray to planning scene
+    std::string tray_name = "kit_tray_" + std::to_string(tray_id);
+    AddModelToPlanningScene(tray_name, "kit_tray.stl", tray_pose);
+    floor_robot_.attachObject(tray_name);
+
+    // Move up slightly
+    waypoints.clear();
+    waypoints.push_back(BuildPose(tray_pose.position.x, tray_pose.position.y, 
+        tray_pose.position.z + 0.2, FloorRobotSetOrientation(tray_rotation)));
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+
+    floor_robot_.setJointValueTarget("linear_actuator_joint", rail_positions_["agv" + std::to_string(agv_num)]);
+    floor_robot_.setJointValueTarget("floor_shoulder_pan_joint", 0);
+
+    FloorRobotMovetoTarget();
+
+    auto agv_tray_pose = FrameWorldPose("agv" + std::to_string(agv_num) + "_tray");
+    auto agv_rotation = GetYaw(agv_tray_pose);
+
+    waypoints.clear();
+    waypoints.push_back(BuildPose(agv_tray_pose.position.x, agv_tray_pose.position.y, 
+        agv_tray_pose.position.z + 0.3, FloorRobotSetOrientation(agv_rotation)));
+    
+    waypoints.push_back(BuildPose(agv_tray_pose.position.x, agv_tray_pose.position.y, 
+        agv_tray_pose.position.z + kit_tray_thickness_ + drop_height_, FloorRobotSetOrientation(agv_rotation)));
+    
+    FloorRobotMoveCartesian(waypoints, 0.2, 0.1);
+
+    FloorRobotSetGripperState(false);
+
+    floor_robot_.detachObject(tray_name);
+
+    LockAGVTray(agv_num);
+
+    waypoints.clear();
+    waypoints.push_back(BuildPose(agv_tray_pose.position.x, agv_tray_pose.position.y, 
+        agv_tray_pose.position.z + 0.3, FloorRobotSetOrientation(0)));
+    
+    FloorRobotMoveCartesian(waypoints, 0.2, 0.1);
+
+    return true;
+}
+
+geometry_msgs::msg::Pose CompetitorControlSystem::FrameWorldPose(std::string frame_id){
+  geometry_msgs::msg::TransformStamped t;
+  geometry_msgs::msg::Pose pose;
+
+  try {
+    t = tf_buffer->lookupTransform("world", frame_id, tf2::TimePointZero);
+  } catch (const tf2::TransformException & ex) {
+    RCLCPP_ERROR(get_logger(), "Could not get transform");
+  }
+
+  pose.position.x = t.transform.translation.x;
+  pose.position.y = t.transform.translation.y;
+  pose.position.z = t.transform.translation.z;
+  pose.orientation = t.transform.rotation;
+
+  return pose;
 }
 
 void CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::string gripper_type){
     RCLCPP_INFO(this->get_logger()," Changing Floor Robot Gripper to type '%s'", gripper_type.c_str() );
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    
+    // Move gripper into tool changer
+    auto tc_pose = FrameWorldPose(station + "_tool_changer_" + gripper_type + "_frame");
+
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    waypoints.push_back(BuildPose(tc_pose.position.x, tc_pose.position.y, 
+        tc_pose.position.z + 0.4, FloorRobotSetOrientation(0.0)));
+    
+    waypoints.push_back(BuildPose(tc_pose.position.x, tc_pose.position.y, 
+        tc_pose.position.z, FloorRobotSetOrientation(0.0)));
+
+    if (!FloorRobotMoveCartesian(waypoints, 0.2, 0.1)) 
+        return false;
+
+    // Call service to change gripper
+    auto request = std::make_shared<ariac_msgs::srv::ChangeGripper::Request>();
+    
+    if (gripper_type == "trays") {
+        request->gripper_type = ariac_msgs::srv::ChangeGripper::Request::TRAY_GRIPPER;
+    } else if (gripper_type == "parts") {
+        request->gripper_type = ariac_msgs::srv::ChangeGripper::Request::PART_GRIPPER;
+    }
+
+    auto result =floor_robot_tool_changer_->async_send_request(request);
+    result.wait();
+    if (!result.get()->success) {
+        RCLCPP_ERROR(get_logger(), "Error calling gripper change service");
+        return false;
+    }
+
+    waypoints.clear();
+    waypoints.push_back(BuildPose(tc_pose.position.x, tc_pose.position.y, 
+        tc_pose.position.z + 0.4, FloorRobotSetOrientation(0.0)));
+
+    if (!FloorRobotMoveCartesian(waypoints, 0.2, 0.1)) 
+        return false;
+
+    return true;
 }
 
 bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
