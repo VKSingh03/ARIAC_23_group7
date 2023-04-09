@@ -19,7 +19,7 @@ ament_target_dependencies(group7_start_competition rclcpp ariac_msgs std_srvs mo
 
 install(TARGETS group7_start_competition DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY include config DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY include config launch rviz DESTINATION share/${PROJECT_NAME})
 
 # if(BUILD_TESTING)
 #   find_package(ament_lint_auto REQUIRED)

@@ -63,15 +63,15 @@ public:
         // Subscriber to receive ariac orders
         subscriber_ = this->create_subscription<ariac_msgs::msg::Order>("/ariac/orders", 10, 
         std::bind(&CompetitorControlSystem::order_callback, this, std::placeholders::_1));
-        // Subscriber to Competition state for Order Submission
-        end_competition_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
-        std::bind(&CompetitorControlSystem::ending_competition_callback, this, std::placeholders::_1));
         // Subscriber to bin_status
         bin_state_subscriber = this->create_subscription<ariac_msgs::msg::BinParts>("/ariac/bin_parts", 10, 
         std::bind(&CompetitorControlSystem::bin_status_callback, this, std::placeholders::_1));
         // Subscriber to conveyor_status
         conveyor_state_subscriber = this->create_subscription<ariac_msgs::msg::ConveyorParts>("/ariac/conveyor_parts", 10, 
         std::bind(&CompetitorControlSystem::conveyor_status_callback, this, std::placeholders::_1));
+        // Subscriber to floor gripper state
+        floor_gripper_state_sub_ = this->create_subscription<ariac_msgs::msg::VacuumGripperState>("/ariac/floor_robot_gripper_state", 
+        rclcpp::SensorDataQoS(), std::bind(&CompetitorControlSystem::floor_gripper_state_cb, this, std::placeholders::_1));
         
         // Subscribers to sensors
         kts1_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
@@ -89,6 +89,15 @@ public:
         right_bins_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
             "/ariac/sensors/right_bins_camera/image", rclcpp::SensorDataQoS(), 
             std::bind(&CompetitorControlSystem::right_bins_camera_cb, this, std::placeholders::_1));
+
+        
+
+        // Initialize service clients 
+        // quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
+        // pre_assembly_poses_getter_ = this->create_client<ariac_msgs::srv::GetPreAssemblyPoses>("/ariac/get_pre_assembly_poses");
+        floor_robot_tool_changer_ = this->create_client<ariac_msgs::srv::ChangeGripper>("/ariac/floor_robot_change_gripper");
+        floor_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/floor_robot_enable_gripper");
+        // ceiling_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/ceiling_robot_enable_gripper");
     }
 
     // Functions to complete specific tasks 
@@ -110,6 +119,8 @@ public:
     bool InsufficientPartsChallange(OrderData current_order_);
     // Function to Submit Orders
     bool SubmitOrder(std::string order_id);
+    // Function for Ending Competition
+    void EndCompetition();
     // Function to convert Part type to string
     std::string PartTypetoString(uint8_t part_type);
     // Function to convert Part colour to string
@@ -123,10 +134,12 @@ public:
     void FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
     void MoveAGVkitting(uint8_t agv, uint8_t destination);
     void MoveAGVAsComb(uint8_t agv, uint8_t station);
-    bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
-    void FloorRobotChangeGripper(std::string station, std::string gripper_type);
+    void FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
+    bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
     void FloorRobotSendHome();
-    bool FloorRobotPickandPlaceTray(int tray_id, uint8_t agv_no);
+    bool FloorRobotPickandPlaceTray(int tray_id, int agv_no);
+    bool FloorRobotSetGripperState(bool enable);
+    bool LockAGVTray(int agv_num);
 
     // Assembly Task Functions: 
     void CeilingRobotSendHome();
@@ -134,11 +147,17 @@ public:
     void CeilingRobotPickTrayPart(CombinedInfo task);
     // void CeilingRobotPlacePartInInsert();
 
-    //Combined Task Fumctioms: 
+    //Combined Task Functioms: 
     void CombinedTaskAssemblyUpdate(CombinedInfo task);
     int AGVAvailable();
 
 private:
+
+    // Robot Move Functions
+    bool FloorRobotMovetoTarget();
+    bool FloorRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf);
+    void FloorRobotWaitForAttach(double timeout);
+
     // Subscribers: 
     // Subscriber to read competition state READY
     rclcpp::Subscription<ariac_msgs::msg::CompetitionState>::SharedPtr competition_state_subscriber; 
@@ -175,6 +194,23 @@ private:
     void left_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void right_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
 
+    // Helper Functions
+    void LogPose(geometry_msgs::msg::Pose p);
+    geometry_msgs::msg::Pose MultiplyPose(geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2);
+    geometry_msgs::msg::Pose BuildPose(double x, double y, double z, geometry_msgs::msg::Quaternion orientation);
+    geometry_msgs::msg::Pose FrameWorldPose(std::string frame_id);
+    double GetYaw(geometry_msgs::msg::Pose pose);
+    geometry_msgs::msg::Quaternion QuaternionFromRPY(double r, double p, double y);
+
+    void AddModelToPlanningScene(std::string name, std::string mesh_file, geometry_msgs::msg::Pose model_pose);
+    void AddModelsToPlanningScene();
+
+    geometry_msgs::msg::Quaternion SetRobotOrientation(double rotation);
+
+    // TF
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer = std::make_unique<tf2_ros::Buffer>(get_clock());
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
+
     // Trays
     std::vector<ariac_msgs::msg::KitTrayPose> kts1_trays_;
     std::vector<ariac_msgs::msg::KitTrayPose> kts2_trays_;
@@ -187,6 +223,15 @@ private:
     moveit::planning_interface::MoveGroupInterface floor_robot_;
     moveit::planning_interface::MoveGroupInterface ceiling_robot_;
     moveit::planning_interface::PlanningSceneInterface planning_scene_;
+
+    trajectory_processing::TimeOptimalTrajectoryGeneration totg_;
+
+    // ARIAC Services
+    // rclcpp::Client<ariac_msgs::srv::PerformQualityCheck>::SharedPtr quality_checker_;
+    // rclcpp::Client<ariac_msgs::srv::GetPreAssemblyPoses>::SharedPtr pre_assembly_poses_getter_;
+    rclcpp::Client<ariac_msgs::srv::ChangeGripper>::SharedPtr floor_robot_tool_changer_;
+    rclcpp::Client<ariac_msgs::srv::VacuumGripperControl>::SharedPtr floor_robot_gripper_enable_;
+    // rclcpp::Client<ariac_msgs::srv::VacuumGripperControl>::SharedPtr ceiling_robot_gripper_enable_;
 
     // Variables: 
     // Variable to store competition state 
@@ -252,13 +297,47 @@ private:
     void competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
     // Subscriber Callback to receive orders
     void order_callback(const ariac_msgs::msg::Order::SharedPtr msg);
-    // Subscriber Callback for Ending Competition
-    void ending_competition_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
     // Subscriber Callback for reading bin status
     void bin_status_callback(const ariac_msgs::msg::BinParts::ConstSharedPtr msg);
     // Subscriber Callback for reading conveyor status
     void conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg);
     // Floor robot Gripper State Callback
     void floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg);
-    
+
+    std::map<std::string, double> rail_positions_ = {
+        {"agv1", -4.5},
+        {"agv2", -1.2},
+        {"agv3", 1.2},
+        {"agv4", 4.5},
+        {"left_bins", 3}, 
+        {"right_bins", -3}
+    };
+    // Joint value targets for kitting stations
+    std::map<std::string, double> floor_kts1_js_ = {
+        {"linear_actuator_joint", 4.0},
+        {"floor_shoulder_pan_joint", 1.57},
+        {"floor_shoulder_lift_joint", -1.57},
+        {"floor_elbow_joint", 1.57},
+        {"floor_wrist_1_joint", -1.57},
+        {"floor_wrist_2_joint", -1.57},
+        {"floor_wrist_3_joint", 0.0}
+    };
+
+    std::map<std::string, double> floor_kts2_js_ = {
+        {"linear_actuator_joint", -4.0},
+        {"floor_shoulder_pan_joint", -1.57},
+        {"floor_shoulder_lift_joint", -1.57},
+        {"floor_elbow_joint", 1.57},
+        {"floor_wrist_1_joint", -1.57},
+        {"floor_wrist_2_joint", -1.57},
+        {"floor_wrist_3_joint", 0.0}
+    };
+
+    // Constants
+    double kit_tray_thickness_ = 0.01;
+    double drop_height_ = 0.002;
+    double pick_offset_ = 0.003;
+    double battery_grip_offset_ = -0.05;
+
+
 }; 

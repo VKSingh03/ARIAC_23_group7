@@ -190,8 +190,8 @@ bool CompetitorControlSystem::SubmitOrder(std::string order_id)
     return result.get()->success;
 }
 
-void CompetitorControlSystem::ending_competition_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
-    if (msg->competition_state == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
+void CompetitorControlSystem::EndCompetition(){
+    if (competition_state_ == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
         if (total_orders == 0){
             // Service client to End competition.
             RCLCPP_INFO(this->get_logger(),"Ending Competition");
@@ -204,6 +204,26 @@ void CompetitorControlSystem::ending_competition_callback(const ariac_msgs::msg:
         }
     }
 }
+
+// void CompetitorControlSystem::LogPose(geometry_msgs::msg::Pose p)
+// {
+//   tf2::Quaternion q(
+//     p.orientation.x,
+//     p.orientation.y,
+//     p.orientation.z,
+//     p.orientation.w);
+//   tf2::Matrix3x3 m(q);
+//   double roll, pitch, yaw;
+//   m.getRPY(roll, pitch, yaw);
+
+//   roll *= 180/M_PI;
+//   pitch *= 180/M_PI;
+//   yaw *= 180/M_PI;
+
+//   RCLCPP_INFO(get_logger(), "(X: %.2f, Y: %.2f, Z: %.2f, R: %.2f, P: %.2f, Y: %.2f)",
+//                  p.position.x, p.position.y, p.position.z,
+//                  roll, pitch, yaw);
+// }
 
 bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order_){
     
@@ -318,7 +338,21 @@ void CompetitorControlSystem::FloorRobotSendHome(){
     FloorRobotMovetoTarget();
 }
 
+bool CompetitorControlSystem::LockAGVTray(int agv_num)
+{
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
 
+  std::string srv_name = "/ariac/agv" + std::to_string(agv_num) + "_lock_tray";
+
+  client = this->create_client<std_srvs::srv::Trigger>(srv_name);
+
+  auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+
+  auto result =client->async_send_request(request);
+  result.wait();
+
+  return result.get()->success;
+}
 
 bool CompetitorControlSystem::FloorRobotMovetoTarget()
 {
@@ -361,6 +395,35 @@ double CompetitorControlSystem::GetYaw(geometry_msgs::msg::Pose pose)
     return yaw;
 }
 
+geometry_msgs::msg::Pose CompetitorControlSystem::BuildPose(double x, double y, double z, geometry_msgs::msg::Quaternion orientation)
+{
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = x;
+  pose.position.y = y;
+  pose.position.z = z;
+  pose.orientation = orientation;
+
+  return pose;
+}
+
+geometry_msgs::msg::Pose CompetitorControlSystem::FrameWorldPose(std::string frame_id){
+  geometry_msgs::msg::TransformStamped t;
+  geometry_msgs::msg::Pose pose;
+
+  try {
+    t = tf_buffer->lookupTransform("world", frame_id, tf2::TimePointZero);
+  } catch (const tf2::TransformException & ex) {
+    RCLCPP_ERROR(get_logger(), "Could not get transform");
+  }
+
+  pose.position.x = t.transform.translation.x;
+  pose.position.y = t.transform.translation.y;
+  pose.position.z = t.transform.translation.z;
+  pose.orientation = t.transform.rotation;
+
+  return pose;
+}
+
 bool CompetitorControlSystem::FloorRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf)
 {
     moveit_msgs::msg::RobotTrajectory trajectory;
@@ -381,7 +444,7 @@ bool CompetitorControlSystem::FloorRobotMoveCartesian(std::vector<geometry_msgs:
     return static_cast<bool>(floor_robot_.execute(trajectory));
 }
 
-geometry_msgs::msg::Quaternion CompetitorControlSystem::FloorRobotSetOrientation(double rotation)
+geometry_msgs::msg::Quaternion CompetitorControlSystem::SetRobotOrientation(double rotation)
 {
     tf2::Quaternion tf_q;
     tf_q.setRPY(0, 3.14159, rotation);
@@ -445,38 +508,38 @@ bool CompetitorControlSystem::FloorRobotSetGripperState(bool enable)
     return true;
 }
 
-void TestCompetitor::AddModelToPlanningScene(std::string name, std::string mesh_file, geometry_msgs::msg::Pose model_pose)
+void CompetitorControlSystem::AddModelToPlanningScene(std::string name, std::string mesh_file, geometry_msgs::msg::Pose model_pose)
 {
-  moveit_msgs::msg::CollisionObject collision;
+    moveit_msgs::msg::CollisionObject collision;
 
-  collision.id = name;
-  collision.header.frame_id = "world";
+    collision.id = name;
+    collision.header.frame_id = "world";
 
-  shape_msgs::msg::Mesh mesh;
-  shapes::ShapeMsg mesh_msg;
-  
-  std::string package_share_directory = ament_index_cpp::get_package_share_directory("test_competitor");
-  std::stringstream path;
-  path << "file://" << package_share_directory << "/meshes/" << mesh_file;
-  std::string model_path = path.str();
+    shape_msgs::msg::Mesh mesh;
+    shapes::ShapeMsg mesh_msg;
+    
+    std::string package_share_directory = ament_index_cpp::get_package_share_directory("test_competitor");
+    std::stringstream path;
+    path << "file://" << package_share_directory << "/meshes/" << mesh_file;
+    std::string model_path = path.str();
 
-  shapes::Mesh *m = shapes::createMeshFromResource(model_path);
-  shapes::constructMsgFromShape(m, mesh_msg);
+    shapes::Mesh *m = shapes::createMeshFromResource(model_path);
+    shapes::constructMsgFromShape(m, mesh_msg);
 
-  mesh = boost::get<shape_msgs::msg::Mesh>(mesh_msg);
+    mesh = boost::get<shape_msgs::msg::Mesh>(mesh_msg);
 
-  collision.meshes.push_back(mesh);
-  collision.mesh_poses.push_back(model_pose);
+    collision.meshes.push_back(mesh);
+    collision.mesh_poses.push_back(model_pose);
 
-  collision.operation = collision.ADD;
+    collision.operation = collision.ADD;
 
-  std::vector<moveit_msgs::msg::CollisionObject> collision_objects;
-  collision_objects.push_back(collision);
+    std::vector<moveit_msgs::msg::CollisionObject> collision_objects;
+    collision_objects.push_back(collision);
 
-  planning_scene_.addCollisionObjects(collision_objects);
+    planning_scene_.addCollisionObjects(collision_objects);
 }
 
-bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t agv_no){
+bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, int agv_num){
     // Checking for parts in bins/tables using camera
     RCLCPP_INFO (this->get_logger()," Checking Tray Tables for Tray Id: '%d' ", tray_id);
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
@@ -537,14 +600,14 @@ bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t ag
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     std::vector<geometry_msgs::msg::Pose> waypoints;
     waypoints.push_back(BuildPose(tray_pose.position.x, tray_pose.position.y, 
-        tray_pose.position.z + 0.2, FloorRobotSetOrientation(tray_rotation)));
+        tray_pose.position.z + 0.2, SetRobotOrientation(tray_rotation)));
     waypoints.push_back(BuildPose(tray_pose.position.x, tray_pose.position.y, 
-        tray_pose.position.z + pick_offset_, FloorRobotSetOrientation(tray_rotation)));
+        tray_pose.position.z + pick_offset_, SetRobotOrientation(tray_rotation)));
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
     FloorRobotSetGripperState(true);
     FloorRobotWaitForAttach(3.0);
 
-    RCLCPP_INFO(this->get_logger()," Placing tray on AGV ID: '%d'", agv_no);
+    RCLCPP_INFO(this->get_logger()," Placing tray on AGV ID: '%d'", agv_num);
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     
     // Add kit tray to planning scene
@@ -555,7 +618,7 @@ bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t ag
     // Move up slightly
     waypoints.clear();
     waypoints.push_back(BuildPose(tray_pose.position.x, tray_pose.position.y, 
-        tray_pose.position.z + 0.2, FloorRobotSetOrientation(tray_rotation)));
+        tray_pose.position.z + 0.2, SetRobotOrientation(tray_rotation)));
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
 
     floor_robot_.setJointValueTarget("linear_actuator_joint", rail_positions_["agv" + std::to_string(agv_num)]);
@@ -568,10 +631,10 @@ bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t ag
 
     waypoints.clear();
     waypoints.push_back(BuildPose(agv_tray_pose.position.x, agv_tray_pose.position.y, 
-        agv_tray_pose.position.z + 0.3, FloorRobotSetOrientation(agv_rotation)));
+        agv_tray_pose.position.z + 0.3, SetRobotOrientation(agv_rotation)));
     
     waypoints.push_back(BuildPose(agv_tray_pose.position.x, agv_tray_pose.position.y, 
-        agv_tray_pose.position.z + kit_tray_thickness_ + drop_height_, FloorRobotSetOrientation(agv_rotation)));
+        agv_tray_pose.position.z + kit_tray_thickness_ + drop_height_, SetRobotOrientation(agv_rotation)));
     
     FloorRobotMoveCartesian(waypoints, 0.2, 0.1);
 
@@ -583,32 +646,14 @@ bool CompetitorControlSystem::FloorRobotPickandPlaceTray(int tray_id, uint8_t ag
 
     waypoints.clear();
     waypoints.push_back(BuildPose(agv_tray_pose.position.x, agv_tray_pose.position.y, 
-        agv_tray_pose.position.z + 0.3, FloorRobotSetOrientation(0)));
+        agv_tray_pose.position.z + 0.3, SetRobotOrientation(0)));
     
     FloorRobotMoveCartesian(waypoints, 0.2, 0.1);
 
     return true;
 }
 
-geometry_msgs::msg::Pose CompetitorControlSystem::FrameWorldPose(std::string frame_id){
-  geometry_msgs::msg::TransformStamped t;
-  geometry_msgs::msg::Pose pose;
-
-  try {
-    t = tf_buffer->lookupTransform("world", frame_id, tf2::TimePointZero);
-  } catch (const tf2::TransformException & ex) {
-    RCLCPP_ERROR(get_logger(), "Could not get transform");
-  }
-
-  pose.position.x = t.transform.translation.x;
-  pose.position.y = t.transform.translation.y;
-  pose.position.z = t.transform.translation.z;
-  pose.orientation = t.transform.rotation;
-
-  return pose;
-}
-
-void CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::string gripper_type){
+bool CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::string gripper_type){
     RCLCPP_INFO(this->get_logger()," Changing Floor Robot Gripper to type '%s'", gripper_type.c_str() );
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     
@@ -617,10 +662,10 @@ void CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::
 
     std::vector<geometry_msgs::msg::Pose> waypoints;
     waypoints.push_back(BuildPose(tc_pose.position.x, tc_pose.position.y, 
-        tc_pose.position.z + 0.4, FloorRobotSetOrientation(0.0)));
+        tc_pose.position.z + 0.4, SetRobotOrientation(0.0)));
     
     waypoints.push_back(BuildPose(tc_pose.position.x, tc_pose.position.y, 
-        tc_pose.position.z, FloorRobotSetOrientation(0.0)));
+        tc_pose.position.z, SetRobotOrientation(0.0)));
 
     if (!FloorRobotMoveCartesian(waypoints, 0.2, 0.1)) 
         return false;
@@ -643,7 +688,7 @@ void CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::
 
     waypoints.clear();
     waypoints.push_back(BuildPose(tc_pose.position.x, tc_pose.position.y, 
-        tc_pose.position.z + 0.4, FloorRobotSetOrientation(0.0)));
+        tc_pose.position.z + 0.4, SetRobotOrientation(0.0)));
 
     if (!FloorRobotMoveCartesian(waypoints, 0.2, 0.1)) 
         return false;
@@ -651,17 +696,17 @@ void CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::
     return true;
 }
 
-bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
+void CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
-    uint8_t part_location = part.second;
+    uint8_t part_bin_location = part.second;
 
-    RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin : '"<< (std::to_string(part_location))<<"'");
+    RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin : '"<< (std::to_string(part_bin_location))<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 
     RCLCPP_INFO_STREAM(get_logger()," Attempting to pick a '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_location)<<"'");
+    RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_bin_location)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 }
 
@@ -826,6 +871,7 @@ void CompetitorControlSystem::CompleteOrders(){
             } 
         else {
             RCLCPP_INFO(get_logger(), " Completed all orders");
+            CompetitorControlSystem::EndCompetition();
             success = true;
             break;
             }
@@ -864,6 +910,8 @@ int main(int argc, char *argv[]){
     std::thread([&executor]()
                 { executor.spin(); })
         .detach();
+
+    competitor_control_system->FloorRobotSendHome();
 
     competitor_control_system->CompleteOrders();
     rclcpp::shutdown();

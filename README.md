@@ -23,11 +23,15 @@
 
 3. Source the workspace after build is complete and launch the AIRAC 
 
-        ros2 launch ariac_gazebo ariac.launch.py trial_name:=rwa1
+        ros2 launch ariac_gazebo ariac.launch.py trial_name:=rwa3 competitor_pkg:=group7 sensor_config:=sensors
 
-4. In a new terminal source ARIAC workspace and launch the **group7** package using 
+4. In a new terminal source ARIAC workspace and launch MoveIt
 
-        ros2 run group7 group7_start_competition
+        ros2 launch ariac_moveit_config ariac_robots_moveit.launch.py
+
+4. In a new terminal source ARIAC workspace and start the competition using **group7** package launch file
+
+        ros2 launch group7 group7.launch.py
 
 
 
