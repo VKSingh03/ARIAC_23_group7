@@ -5,15 +5,29 @@
         "databaseFilename": "${default}",
         "limitSymbolsToIncludedHeaders": false
       },
+      // "includePath": [
+      //   "/opt/ros/galactic/include/**",
+      //   "/home/vineet/ariac_ws/src/src/ariac/ariac_plugins/include/**",
+      //   "/home/vineet/ariac_ws/src/src/ariac/ariac_sensors/include/**",
+      //   "/home/vineet/ariac_ws/src/src/ariac/test_competitor/include/**",
+      //   "/home/vineet/ariac_ws/src/src/group7/include/**",
+      //   "include/**",
+      //   "/usr/include/**"
+      // ],
+
       "includePath": [
-        "/opt/ros/galactic/include/**",
-        "/home/vineet/ariac_ws/src/src/ariac/ariac_plugins/include/**",
-        "/home/vineet/ariac_ws/src/src/ariac/ariac_sensors/include/**",
-        "/home/vineet/ariac_ws/src/src/ariac/test_competitor/include/**",
-        "/home/vineet/ariac_ws/src/src/group7/include/**",
-        "include/**",
-        "/usr/include/**"
+      "/opt/ros/galactic/include/**",
+      "/home/ishan/ariac_ws/src/ARIAC/ariac_plugins/include/**",
+      "/home/ishan/ariac_ws/src/ARIAC/ariac_sensors/include/**",
+      "/home/ishan/ariac_ws/src/ARIAC/test_competitor/include/**",
+      "/home/ishan/ariac_ws/install/ariac_msgs/include/ariac_msgs/msg/**",
+      "/home/ishan/ariac_ws/src/group7/include/**",
+      "/home/ishan/ariac_ws/src/enpm663_spring2023/lecture6/include/**",
+      "/home/ishan/ariac_ws/install",
+      "include/**",
+      "/usr/include/**"
       ],
+
       "name": "ROS",
       "intelliSenseMode": "gcc-x64",
       "compilerPath": "/usr/bin/gcc",
