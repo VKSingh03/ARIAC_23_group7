@@ -696,21 +696,106 @@ bool CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::
     return true;
 }
 
-void CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
+bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
     uint8_t part_bin_location = part.second;
 
     RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin : '"<< (std::to_string(part_bin_location))<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // Check if part is in one of the bins
+    geometry_msgs::msg::Pose part_pose;
+    bool found_part = false;
+    std::string bin_side;
+
+    // Check left bins
+    for (auto part: left_bins_parts_) {
+        if (part.part.type == part_type && part.part.color == part_color) {
+        part_pose = MultiplyPose(left_bins_camera_pose_, part.pose);
+        found_part = true;
+        bin_side = "left_bins";
+        break;
+        }
+    }
+    // Check right bins
+    if (!found_part) {
+        for (auto part: right_bins_parts_) {
+        if (part.part.type == part_type && part.part.color == part_color) {
+            part_pose = MultiplyPose(right_bins_camera_pose_, part.pose);
+            found_part = true;
+            bin_side = "right_bins";
+            break;
+        }
+        } 
+    }
+    if (!found_part) {
+        RCLCPP_ERROR(get_logger(), "Unable to locate part");
+        return false;
+    }
+
+    double part_rotation = GetYaw(part_pose);
+
+    // Change gripper at location closest to part
+    if (floor_gripper_state_.type != "part_gripper") {
+        std::string station;
+        if (part_pose.position.y < 0) {
+        station = "kts1";
+        } else {
+        station = "kts2";
+        }
+
+        // Move floor robot to the corresponding kit tray table
+        if (station == "kts1") {
+        floor_robot_.setJointValueTarget(floor_kts1_js_);
+        } else {
+        floor_robot_.setJointValueTarget(floor_kts2_js_);
+        }
+        FloorRobotMovetoTarget();
+
+        FloorRobotChangeGripper(station, "parts");
+    }
 
     RCLCPP_INFO_STREAM(get_logger()," Attempting to pick a '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_bin_location)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+
+    floor_robot_.setJointValueTarget("linear_actuator_joint", rail_positions_[bin_side]);
+    floor_robot_.setJointValueTarget("floor_shoulder_pan_joint", 0);
+    FloorRobotMovetoTarget();
+
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
+        part_pose.position.z + 0.5, SetRobotOrientation(part_rotation)));
+    
+    waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
+        part_pose.position.z + part_heights_[part_type] + pick_offset_, SetRobotOrientation(part_rotation)));
+    
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+
+    FloorRobotSetGripperState(true);
+
+    FloorRobotWaitForAttach(3.0);
+
+    // Add part to planning scene
+    std::string part_name = part_colors_[part_color] + "_" + part_types_[part_type];
+    AddModelToPlanningScene(part_name, part_types_[part_type] + ".stl", part_pose);
+    floor_robot_.attachObject(part_name);
+    // floor_robot_attached_part_ = part_to_pick;
+    floor_robot_attached_part_.type = part_type;
+    floor_robot_attached_part_.color = part_color;
+
+    // Move up slightly
+    waypoints.clear();
+    waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
+        part_pose.position.z + 0.3, SetRobotOrientation(0)));
+
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+
+    return true;
 }
 
-void CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no ){
+bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no ){
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
     uint8_t part_location = part.second;
@@ -719,6 +804,57 @@ void CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
     
     RCLCPP_INFO_STREAM(get_logger()," Place '"<< PartColortoString(part_color)<<"' '"<<PartTypetoString(part_type)<<"' in quadrant '"<<std::to_string(quadrant)<< "' on the kit tray ID: '"<< std::to_string(tray_id)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+
+    if (!floor_gripper_state_.attached) {
+        RCLCPP_ERROR(get_logger(), "No part attached");
+        return false;
+    }
+
+    // Move to agv
+    floor_robot_.setJointValueTarget("linear_actuator_joint", rail_positions_["agv" + std::to_string(agv_no)]);
+    floor_robot_.setJointValueTarget("floor_shoulder_pan_joint", 0);
+    FloorRobotMovetoTarget();
+
+    // Determine target pose for part based on agv_tray pose
+    auto agv_tray_pose = FrameWorldPose("agv" + std::to_string(agv_no) + "_tray");
+
+    auto part_drop_offset = BuildPose(quad_offsets_[quadrant].first, quad_offsets_[quadrant].second, 0.0, 
+        geometry_msgs::msg::Quaternion());
+
+    auto part_drop_pose = MultiplyPose(agv_tray_pose, part_drop_offset);
+
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    
+    waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
+        part_drop_pose.position.z + 0.3, SetRobotOrientation(0)));
+
+    waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
+        part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type] + drop_height_,
+        SetRobotOrientation(0)));
+    
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+
+    // Drop part in quadrant
+    FloorRobotSetGripperState(false);
+
+    std::string part_name = part_colors_[floor_robot_attached_part_.color] + 
+        "_" + part_types_[floor_robot_attached_part_.type];
+    floor_robot_.detachObject(part_name);
+
+    waypoints.clear();
+    waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
+        part_drop_pose.position.z + 0.3,
+        SetRobotOrientation(0)));
+    
+    
+    FloorRobotMoveCartesian(waypoints, 0.2, 0.1);
+
+    return true;
+}
+
+bool FloorRobotConveyorPartspickup(){
+    floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup);
+    
 }
 
 void CompetitorControlSystem::MoveAGVkitting(uint8_t agv, uint8_t destination){

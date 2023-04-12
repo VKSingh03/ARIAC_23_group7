@@ -131,13 +131,14 @@ public:
     std::string StationtoString(uint8_t station);
     
     //Kitting Task Functions: 
-    void FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
+    bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
     void MoveAGVkitting(uint8_t agv, uint8_t destination);
     void MoveAGVAsComb(uint8_t agv, uint8_t station);
-    void FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
+    bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
     void FloorRobotSendHome();
     bool FloorRobotPickandPlaceTray(int tray_id, int agv_no);
+    bool FloorRobotConveyorPartspickup();
     bool FloorRobotSetGripperState(bool enable);
     bool LockAGVTray(int agv_num);
 
@@ -242,6 +243,8 @@ private:
     // OrderData current_order_(nullptr);
     // Gripper State
     ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
+    ariac_msgs::msg::Part floor_robot_attached_part_;
+
     // Variable to store position of first priority order in the vector
     int first_priority_order{0};
     // Variable to keep of total orders received and pending. 
@@ -278,7 +281,7 @@ private:
     {12, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}},
     {13, {{0, 0}, {1, 0},{2, 0}, {3, 0}, {4, 0}}}};
 
-    // Data structure to store kitting task plan
+    // Data structure to store kitting task plan // (type,color), bin 
     std::map<uint8_t, std::pair<std::pair<uint8_t, uint8_t>, uint8_t>> kitting_part_details = {
     {1 , std::make_pair(std::make_pair(0, 0), NULL)}, 
     {2 , std::make_pair(std::make_pair(0, 0), NULL)}, 
@@ -333,11 +336,51 @@ private:
         {"floor_wrist_3_joint", 0.0}
     };
 
+    std::map<std::string, double> floor_conveyor_parts_pickup = {
+        {"linear_actuator_joint", -4.0},
+        {"floor_shoulder_pan_joint", -1.57},
+        {"floor_shoulder_lift_joint", -1.57},
+        {"floor_elbow_joint", 1.57},
+        {"floor_wrist_1_joint", -1.57},
+        {"floor_wrist_2_joint", -1.57},
+        {"floor_wrist_3_joint", 0.0}
+    };
+
     // Constants
     double kit_tray_thickness_ = 0.01;
     double drop_height_ = 0.002;
     double pick_offset_ = 0.003;
     double battery_grip_offset_ = -0.05;
 
+    std::map<int, std::string> part_types_ = {
+        {ariac_msgs::msg::Part::BATTERY, "battery"},
+        {ariac_msgs::msg::Part::PUMP, "pump"},
+        {ariac_msgs::msg::Part::REGULATOR, "regulator"},
+        {ariac_msgs::msg::Part::SENSOR, "sensor"}
+    };
+
+    std::map<int, std::string> part_colors_ = {
+        {ariac_msgs::msg::Part::RED, "red"},
+        {ariac_msgs::msg::Part::BLUE, "blue"},
+        {ariac_msgs::msg::Part::GREEN, "green"},
+        {ariac_msgs::msg::Part::ORANGE, "orange"},
+        {ariac_msgs::msg::Part::PURPLE, "purple"},
+    };
+
+    // Part heights
+    std::map<int, double> part_heights_ = {
+        {ariac_msgs::msg::Part::BATTERY, 0.04},
+        {ariac_msgs::msg::Part::PUMP, 0.12},
+        {ariac_msgs::msg::Part::REGULATOR, 0.07},
+        {ariac_msgs::msg::Part::SENSOR, 0.07}
+    };
+
+    // Quadrant Offsets
+    std::map<int, std::pair<double, double>> quad_offsets_ = {
+        {ariac_msgs::msg::KittingPart::QUADRANT1, std::pair<double, double>(-0.08, 0.12)},
+        {ariac_msgs::msg::KittingPart::QUADRANT2, std::pair<double, double>(0.08, 0.12)},
+        {ariac_msgs::msg::KittingPart::QUADRANT3, std::pair<double, double>(-0.08, -0.12)},
+        {ariac_msgs::msg::KittingPart::QUADRANT4, std::pair<double, double>(0.08, -0.12)},
+    };
 
 }; 
