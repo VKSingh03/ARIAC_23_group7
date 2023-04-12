@@ -852,9 +852,14 @@ bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
     return true;
 }
 
-bool FloorRobotConveyorPartspickup(){
+bool CompetitorControlSystem::FloorRobotConveyorPartspickup(){
     floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup);
-    
+    FloorRobotMovetoTarget();
+    // while(!breakbeam_conv_end){}
+    // FloorRobotSetGripperState(true);
+    // function to move robot at 0.2m/s
+    // function for robot to go down to pickup part(x, y, z) // x-from camera pose, y-changes with time, z-part height
+    // FloorRobotWaitForAttach(3.0);
 }
 
 void CompetitorControlSystem::MoveAGVkitting(uint8_t agv, uint8_t destination){
@@ -914,19 +919,21 @@ void CompetitorControlSystem::CeilingRobotPickTrayPart(CombinedInfo task){
     uint8_t part_location = task.station;
     CombinedTaskAssemblyUpdate(task);
         for (int i = 1; i <5; i++){
-        uint8_t part_type = assembly_part_details[task.station][i].first;
-        uint8_t part_color = assembly_part_details[task.station][i].second;
-        RCLCPP_INFO_STREAM(get_logger()," Checking AGV for '"<<PartColortoString(part_color)<<"' '"<<PartTypetoString(part_type)<< "' location in tray ");
-        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-        RCLCPP_INFO_STREAM(get_logger()," Picking up '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
-        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-        RCLCPP_INFO_STREAM(get_logger()," Placing '"<<PartColortoString(part_color) << "' '" << PartTypetoString(part_type) << "' in Insert frame as per given pose and direction");
-        RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+            uint8_t part_type = assembly_part_details[task.station][i].first;
+            uint8_t part_color = assembly_part_details[task.station][i].second;
+            RCLCPP_INFO_STREAM(get_logger()," Checking AGV for '"<<PartColortoString(part_color)<<"' '"<<PartTypetoString(part_type)<< "' location in tray ");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+            RCLCPP_INFO_STREAM(get_logger()," Picking up '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+            RCLCPP_INFO_STREAM(get_logger()," Placing '"<<PartColortoString(part_color) << "' '" << PartTypetoString(part_type) << "' in Insert frame as per given pose and direction");
+            RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
         }
         }
 
 bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
-{ 
+{   
+    // FloorRobotConveyorPartspickup();
+
     FloorRobotSendHome();
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
 

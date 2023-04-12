@@ -23,7 +23,7 @@
 
 3. Source the workspace after build is complete and launch the AIRAC 
 
-        ros2 launch ariac_gazebo ariac.launch.py trial_name:=rwa3 competitor_pkg:=group7 sensor_config:=sensors
+        ros2 launch ariac_gazebo ariac.launch.py trial_name:=rwa3 competitor_pkg:=group7 sensor_config:=group7_sensors
 
 4. In a new terminal source ARIAC workspace and launch MoveIt
 
