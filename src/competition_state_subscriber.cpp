@@ -99,6 +99,26 @@ void CompetitorControlSystem::right_bins_camera_cb(const ariac_msgs::msg::Advanc
   right_bins_camera_pose_ = msg->sensor_pose;
 }
 
+void CompetitorControlSystem::conveyor_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg){
+    if (!conveyor_camera_received_data) {
+        RCLCPP_INFO(this->get_logger(), "Received data from conveyor camera");
+        right_bins_camera_recieved_data = true;
+    }
+    
+    conv_part_ = msg->part_poses;
+    conv_camera_pose_ = msg->sensor_pose; 
+}
+
+void CompetitorControlSystem::breakbeam_start_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg){
+    
+}
+
+void CompetitorControlSystem::breakbeam_end_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg){
+    if(breakbeam_end_received_data){
+        breakbeam_end_received_data = true;
+    }
+}
+
 void CompetitorControlSystem::competition_state_callback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg){
     // Reading if competition state is READY
     competition_state_ = msg->competition_state;
@@ -756,7 +776,7 @@ bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<
     }
 
     RCLCPP_INFO_STREAM(get_logger()," Attempting to pick a '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger(),"-----------------------------------ros2 launch ariac_moveit_config ariac_robots_moveit.launch.py-----------------------------------------------");
     RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_bin_location)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 
@@ -855,18 +875,38 @@ bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
 bool CompetitorControlSystem::FloorRobotConveyorPartspickup(){
     floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup);
     FloorRobotMovetoTarget();
-    // while(!breakbeam_conv_end){}
+    FloorRobotSetGripperState(true);
+    while(!conveyor_camera_received_data){}
+    
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
+        part_pose.position.z + 0.5, SetRobotOrientation(part_rotation)));
+    
     // FloorRobotSetGripperState(true);
     // function to move robot at 0.2m/s
     // function for robot to go down to pickup part(x, y, z) // x-from camera pose, y-changes with time, z-part height
     // FloorRobotWaitForAttach(3.0);
 }
 
-void CompetitorControlSystem::MoveAGVkitting(uint8_t agv, uint8_t destination){
+bool CompetitorControlSystem::MoveAGVkitting(uint8_t agv, uint8_t destination){
     RCLCPP_INFO_STREAM(get_logger()," Locking Tray on AGV : '"<< std::to_string(agv)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     RCLCPP_INFO_STREAM(get_logger()," Moving AGV '"<< std::to_string(agv)<<"' to '"<< DestinationtoString(destination)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+
+    rclcpp::Client<ariac_msgs::srv::MoveAGV>::SharedPtr client;
+
+    std::string srv_name = "/ariac/move_agv" + std::to_string(agv);
+
+    client = this->create_client<ariac_msgs::srv::MoveAGV>(srv_name);
+
+    auto request = std::make_shared<ariac_msgs::srv::MoveAGV::Request>();
+    request->location = destination;
+
+    auto result =client->async_send_request(request);
+    result.wait();
+
+    return result.get()->success;
 }
 
 void CompetitorControlSystem::MoveAGVAsComb(uint8_t agv, uint8_t station){
@@ -932,16 +972,13 @@ void CompetitorControlSystem::CeilingRobotPickTrayPart(CombinedInfo task){
 
 bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
 {   
-    // FloorRobotConveyorPartspickup();
+    FloorRobotConveyorPartspickup();
 
     FloorRobotSendHome();
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
 
     std::string station;
     FloorRobotChangeGripper(station, "parts");
-    // RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
-    // RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    // Call function to change Robot Gripper
 
     for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
         if(kit_part->second.second != NULL){

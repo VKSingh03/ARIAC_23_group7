@@ -17,6 +17,7 @@
 #include <ariac_msgs/msg/kit_tray_pose.hpp>
 #include <ariac_msgs/msg/vacuum_gripper_state.hpp>
 #include <ariac_msgs/msg/advanced_logical_camera_image.hpp>
+#include <ariac_msgs/msg/break_beam_status.hpp>
 
 #include <ariac_msgs/srv/change_gripper.hpp>
 #include <ariac_msgs/srv/vacuum_gripper_control.hpp>
@@ -57,6 +58,13 @@ public:
     ceiling_robot_(std::shared_ptr<rclcpp::Node>(std::move(this)), "ceiling_robot"),    
     planning_scene_()
     {
+        // Use upper joint velocity and acceleration limits
+        floor_robot_.setMaxAccelerationScalingFactor(2.0);
+        floor_robot_.setMaxVelocityScalingFactor(2.0);
+
+        ceiling_robot_.setMaxAccelerationScalingFactor(1.0);
+        ceiling_robot_.setMaxVelocityScalingFactor(1.0);
+
         // Subscriber to competition state for Launching Competition
         competition_state_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
         std::bind(&CompetitorControlSystem::competition_state_callback, this, std::placeholders::_1));
@@ -90,7 +98,17 @@ public:
             "/ariac/sensors/right_bins_camera/image", rclcpp::SensorDataQoS(), 
             std::bind(&CompetitorControlSystem::right_bins_camera_cb, this, std::placeholders::_1));
 
-        
+        conveyor_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
+            "/ariac/sensors/conv_camera1/image", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::conveyor_camera_cb, this, std::placeholders::_1));
+
+        breakbeam_start_sub_ = this->create_subscription<ariac_msgs::msg::BreakBeamStatus>(
+            "/ariac/sensors/conv_beam1/status", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::breakbeam_start_cb, this, std::placeholders::_1));
+
+        breakbeam_end_sub_ = this->create_subscription<ariac_msgs::msg::BreakBeamStatus>(
+            "/ariac/sensors/conv_beam1/status", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::breakbeam_end_cb, this, std::placeholders::_1));
 
         // Initialize service clients 
         // quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
@@ -132,7 +150,7 @@ public:
     
     //Kitting Task Functions: 
     bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
-    void MoveAGVkitting(uint8_t agv, uint8_t destination);
+    bool MoveAGVkitting(uint8_t agv, uint8_t destination);
     void MoveAGVAsComb(uint8_t agv, uint8_t station);
     bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
@@ -171,29 +189,40 @@ private:
     // Subscriber to Converyor status
     rclcpp::Subscription<ariac_msgs::msg::ConveyorParts>::SharedPtr conveyor_state_subscriber; 
     // Subscriber to Floor Robot Gripper type
-    rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_; 
     //Sensors subscriber
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts1_camera_sub_;
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts2_camera_sub_;
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr left_bins_camera_sub_;
     rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr right_bins_camera_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr conveyor_camera_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_start_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_end_sub_;
 
     // Sensor poses
     geometry_msgs::msg::Pose kts1_camera_pose_;
     geometry_msgs::msg::Pose kts2_camera_pose_;
     geometry_msgs::msg::Pose left_bins_camera_pose_;
     geometry_msgs::msg::Pose right_bins_camera_pose_;
+    geometry_msgs::msg::Pose conveyor_camera_pose;
+    geometry_msgs::msg::Pose conv_camera_pose_; 
 
     // Sensor Callbacks
-    bool kts1_camera_recieved_data = false;
-    bool kts2_camera_recieved_data = false;
-    bool left_bins_camera_recieved_data = false;
-    bool right_bins_camera_recieved_data = false;
+    bool kts1_camera_recieved_data = false; 
+    bool kts2_camera_recieved_data = false; 
+    bool left_bins_camera_recieved_data = false; 
+    bool right_bins_camera_recieved_data = false; 
+    bool conveyor_camera_received_data = false; 
+    // bool breakbeam_start_received_data = false; 
+    bool breakbeam_end_received_data = false; 
 
     void kts1_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void kts2_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void left_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void right_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
+    void conveyor_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
+    void breakbeam_start_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
+    void breakbeam_end_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
 
     // Helper Functions
     void LogPose(geometry_msgs::msg::Pose p);
@@ -219,6 +248,7 @@ private:
     // Bins
     std::vector<ariac_msgs::msg::PartPose> left_bins_parts_;
     std::vector<ariac_msgs::msg::PartPose> right_bins_parts_;
+    ariac_msgs::msg::PartPose conv_part_;
 
     // MoveIt Interfaces
     moveit::planning_interface::MoveGroupInterface floor_robot_;
@@ -337,12 +367,12 @@ private:
     };
 
     std::map<std::string, double> floor_conveyor_parts_pickup = {
-        {"linear_actuator_joint", -4.0},
-        {"floor_shoulder_pan_joint", -1.57},
-        {"floor_shoulder_lift_joint", -1.57},
-        {"floor_elbow_joint", 1.57},
-        {"floor_wrist_1_joint", -1.57},
-        {"floor_wrist_2_joint", -1.57},
+        {"linear_actuator_joint", 0},
+        {"floor_shoulder_pan_joint", 3.14},
+        {"floor_shoulder_lift_joint", -1.0},
+        {"floor_elbow_joint", 2.13},
+        {"floor_wrist_1_joint", -2.76},
+        {"floor_wrist_2_joint", -1.51},
         {"floor_wrist_3_joint", 0.0}
     };
 
