@@ -100,11 +100,10 @@ void CompetitorControlSystem::right_bins_camera_cb(const ariac_msgs::msg::Advanc
 }
 
 void CompetitorControlSystem::conveyor_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg){
-    if (!conveyor_camera_received_data) {
+    if (!conveyor_camera_received_data && (msg->part_poses.size() != 0)) {
         RCLCPP_INFO(this->get_logger(), "Received data from conveyor camera");
-        right_bins_camera_recieved_data = true;
+        conveyor_camera_received_data = true;
     }
-    
     conv_part_ = msg->part_poses;
     conv_camera_pose_ = msg->sensor_pose; 
 }
@@ -114,7 +113,7 @@ void CompetitorControlSystem::breakbeam_start_cb(const ariac_msgs::msg::BreakBea
 }
 
 void CompetitorControlSystem::breakbeam_end_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg){
-    if(breakbeam_end_received_data){
+    if(!breakbeam_end_received_data && msg->object_detected == true){
         breakbeam_end_received_data = true;
     }
 }
@@ -875,17 +874,43 @@ bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
 bool CompetitorControlSystem::FloorRobotConveyorPartspickup(){
     floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup);
     FloorRobotMovetoTarget();
-    FloorRobotSetGripperState(true);
-    while(!conveyor_camera_received_data){}
-    
-    std::vector<geometry_msgs::msg::Pose> waypoints;
-    waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
-        part_pose.position.z + 0.5, SetRobotOrientation(part_rotation)));
-    
     // FloorRobotSetGripperState(true);
+    
+    geometry_msgs::msg::Pose part_pose;
+    bool found_part = false;
+    
+    
+    uint8_t part_type;
+    uint8_t part_color;
+
+    while(!conveyor_camera_received_data){
+        // RCLCPP_INFO(this->get_logger(), "Waiting for part on conveyor");
+    }
+
+    conv_part_current = conv_part_;
+    part_pose = MultiplyPose(conv_camera_pose_, conv_part_current[0].pose);
+    part_type = conv_part_current[0].part.type;
+    part_color = conv_part_current[0].part.color;
+
+    // double part_rotation = GetYaw(part_pose);
+
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    // waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y - 2.5, 
+    //     part_pose.position.z+ 0.3, SetRobotOrientation(0)));
+
+    waypoints.push_back(BuildPose(part_pose.position.x, 0.65 , 
+        part_pose.position.z + part_heights_[part_type] + pick_offset_-0.001, SetRobotOrientation(0)));
+    
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+    
+    FloorRobotSetGripperState(true);
     // function to move robot at 0.2m/s
     // function for robot to go down to pickup part(x, y, z) // x-from camera pose, y-changes with time, z-part height
-    // FloorRobotWaitForAttach(3.0);
+    while (breakbeam_end_received_data== false){}
+    breakbeam_end_received_data == false; 
+    FloorRobotWaitForAttach(2.0); 
+
+
 }
 
 bool CompetitorControlSystem::MoveAGVkitting(uint8_t agv, uint8_t destination){

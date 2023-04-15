@@ -107,7 +107,7 @@ public:
             std::bind(&CompetitorControlSystem::breakbeam_start_cb, this, std::placeholders::_1));
 
         breakbeam_end_sub_ = this->create_subscription<ariac_msgs::msg::BreakBeamStatus>(
-            "/ariac/sensors/conv_beam1/status", rclcpp::SensorDataQoS(), 
+            "/ariac/sensors/conv_beam2/status", rclcpp::SensorDataQoS(), 
             std::bind(&CompetitorControlSystem::breakbeam_end_cb, this, std::placeholders::_1));
 
         // Initialize service clients 
@@ -248,7 +248,8 @@ private:
     // Bins
     std::vector<ariac_msgs::msg::PartPose> left_bins_parts_;
     std::vector<ariac_msgs::msg::PartPose> right_bins_parts_;
-    ariac_msgs::msg::PartPose conv_part_;
+    std::vector<ariac_msgs::msg::PartPose> conv_part_;
+    std::vector<ariac_msgs::msg::PartPose> conv_part_current;
 
     // MoveIt Interfaces
     moveit::planning_interface::MoveGroupInterface floor_robot_;
