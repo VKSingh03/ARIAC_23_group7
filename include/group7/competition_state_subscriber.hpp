@@ -44,6 +44,7 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
+#include <chrono>
 
 # include "order_class.hpp"
 
@@ -169,6 +170,7 @@ public:
     //Combined Task Functioms: 
     void CombinedTaskAssemblyUpdate(CombinedInfo task);
     int AGVAvailable();
+    int TrayAvailable();
 
 private:
 
@@ -213,7 +215,7 @@ private:
     bool left_bins_camera_recieved_data = false; 
     bool right_bins_camera_recieved_data = false; 
     bool conveyor_camera_received_data = false; 
-    // bool breakbeam_start_received_data = false; 
+    bool breakbeam_start_received_data = false; 
     bool breakbeam_end_received_data = false; 
 
     void kts1_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
@@ -223,6 +225,12 @@ private:
     void conveyor_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void breakbeam_start_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
     void breakbeam_end_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
+
+    int breakbeam_one_counter{0};
+    int breakbeam_two_counter{0};
+    int ConveyorPartPickLocation();
+    double conveyor_pickup_location_one = 0.65;
+    double conveyor_pickup_location_two = -2.15;
 
     // Helper Functions
     void LogPose(geometry_msgs::msg::Pose p);
@@ -413,5 +421,80 @@ private:
         {ariac_msgs::msg::KittingPart::QUADRANT3, std::pair<double, double>(-0.08, -0.12)},
         {ariac_msgs::msg::KittingPart::QUADRANT4, std::pair<double, double>(0.08, -0.12)},
     };
+
+    // left_bin = [std::make_pair(1.07711, 0.595),
+    //             std::make_pair(1.07712, 0.415),
+    //             std::make_pair(1.07739, 0.235001),
+    //             std::make_pair(1.07713, 0.595),
+    //             std::make_pair(1.07741, 0.415),
+    //             std::make_pair(1.07714, 0.235),
+    //             std::make_pair(1.0774, 0.595),
+    //             std::make_pair(1.07715, 0.415),
+    //             std::make_pair(1.07715, 0.235),
+    //             std::make_pair(1.079, -0.15498),
+    //             std::make_pair(1.07901, -0.33498),
+    //             std::make_pair(1.07901, -0.51498),
+    //             std::make_pair(1.07902, -0.15498),
+    //             std::make_pair(1.07902, -0.334981),
+    //             std::make_pair(1.07902, -0.514981),
+    //             std::make_pair(1.07902, -0.154981),
+    //             std::make_pair(1.07903, -0.334981),
+    //             std::make_pair(1.07903, -0.514981),
+    //             std::make_pair(1.07925, -0.154996),
+    //             std::make_pair(1.07925, -0.334996),
+    //             std::make_pair(1.07925, -0.514996),
+    //             std::make_pair(1.07925, -0.154996),
+    //             std::make_pair(1.07926, -0.334996),
+    //             std::make_pair(1.07926, -0.514996),
+    //             std::make_pair(1.07926, -0.154996),
+    //             std::make_pair(1.07926, -0.334996),
+    //             std::make_pair(1.07927, -0.514996),
+    //             std::make_pair(1.07715, 0.595),
+    //             std::make_pair(1.07716, 0.415),
+    //             std::make_pair(1.07718, 0.235),
+    //             std::make_pair(1.07716, 0.595),
+    //             std::make_pair(1.07718, 0.415),
+    //             std::make_pair(1.07717, 0.235),
+    //             std::make_pair(1.07719, 0.595),
+    //             std::make_pair(1.07718, 0.415),
+    //             std::make_pair(1.07718, 0.235)];
+
+    // right_bin =[std::make_pair(1.07685, -0.235),
+    //             std::make_pair(1.07686, -0.415),
+    //             std::make_pair(1.0773, -0.594999),
+    //             std::make_pair(1.07687, -0.235),
+    //             std::make_pair(1.07734, -0.415),
+    //             std::make_pair(1.07689, -0.595),
+    //             std::make_pair(1.07732, -0.235),
+    //             std::make_pair(1.0769, -0.415),
+    //             std::make_pair(1.07691, -0.595),
+    //             std::make_pair(1.07687, 0.515021),
+    //             std::make_pair(1.07688, 0.335021),
+    //             std::make_pair(1.07688, 0.155021),
+    //             std::make_pair(1.07689, 0.515021),
+    //             std::make_pair(1.07689, 0.335021),
+    //             std::make_pair(1.0769, 0.155021),
+    //             std::make_pair(1.07691, 0.515021),
+    //             std::make_pair(1.07691, 0.335021),
+    //             std::make_pair(1.07692, 0.155021),
+    //             std::make_pair(1.07908, 0.515006),
+    //             std::make_pair(1.07909, 0.335006),
+    //             std::make_pair(1.0791, 0.155006),
+    //             std::make_pair(1.0791, 0.515006),
+    //             std::make_pair(1.07911, 0.335006),
+    //             std::make_pair(1.07911, 0.155006),
+    //             std::make_pair(1.07912, 0.515006),
+    //             std::make_pair(1.07912, 0.335006),
+    //             std::make_pair(1.07913, 0.155006),
+    //             std::make_pair(1.07696, -0.235001),
+    //             std::make_pair(1.07697, -0.415001),
+    //             std::make_pair(1.07699, -0.595001),
+    //             std::make_pair(1.07698, -0.235001)
+    //             std::make_pair(1.077, -0.415),
+    //             std::make_pair(1.07699, -0.595001),
+    //             std::make_pair(1.07701, -0.235),
+    //             std::make_pair(1.077, -0.415),
+    //             std::make_pair(1.07701, -0.595)
+    //                 ];
 
 }; 

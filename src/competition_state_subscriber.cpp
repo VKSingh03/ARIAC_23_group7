@@ -4,6 +4,7 @@
 # include <memory>
 # include <vector>
 # include <iostream>  
+#include <fstream>
 
 std::string CompetitorControlSystem::DestinationtoString(uint8_t dest){
     if (dest == ariac_msgs::msg::KittingTask::ASSEMBLY_FRONT)
@@ -82,6 +83,11 @@ void CompetitorControlSystem::left_bins_camera_cb(const ariac_msgs::msg::Advance
   if (!left_bins_camera_recieved_data) {
     RCLCPP_INFO(this->get_logger(), "Received data from left bins camera");
     left_bins_camera_recieved_data = true;
+    // std::ofstream outfile("left_bins.txt");
+    // for(auto i:msg->part_poses){
+    //     outfile << i.pose.position.x <<", "<< i.pose.position.y<< std::endl;
+    // }
+    // outfile.close();
   }
 
   left_bins_parts_ = msg->part_poses;
@@ -93,6 +99,13 @@ void CompetitorControlSystem::right_bins_camera_cb(const ariac_msgs::msg::Advanc
   if (!right_bins_camera_recieved_data) {
     RCLCPP_INFO(this->get_logger(), "Received data from right bins camera");
     right_bins_camera_recieved_data = true;
+    // std::ofstream outfile("right_bins.txt");
+    // for(auto i:msg->part_poses){
+    //     outfile << i.pose.position.x <<", "<< i.pose.position.y << std::endl;
+    // }
+    // outfile.close();
+    // for(auto i: msg->part_poses)
+    //     RCLCPP_INFO_STREAM(get_logger()," X: '"<< (std::to_string(part_bin_location))<<"'");
   }
 
   right_bins_parts_ = msg->part_poses;
@@ -103,18 +116,24 @@ void CompetitorControlSystem::conveyor_camera_cb(const ariac_msgs::msg::Advanced
     if (!conveyor_camera_received_data && (msg->part_poses.size() != 0)) {
         RCLCPP_INFO(this->get_logger(), "Received data from conveyor camera");
         conveyor_camera_received_data = true;
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        conv_part_.push_back(msg->part_poses[0]);
     }
-    conv_part_ = msg->part_poses;
+    // conv_part_ = msg->part_poses; 
     conv_camera_pose_ = msg->sensor_pose; 
 }
 
 void CompetitorControlSystem::breakbeam_start_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg){
-    
+    if(!breakbeam_start_received_data && msg->object_detected == true){
+        breakbeam_start_received_data = true;
+        breakbeam_one_counter +=1; 
+    }
 }
 
 void CompetitorControlSystem::breakbeam_end_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg){
     if(!breakbeam_end_received_data && msg->object_detected == true){
         breakbeam_end_received_data = true;
+        breakbeam_two_counter +=1;
     }
 }
 
@@ -223,26 +242,6 @@ void CompetitorControlSystem::EndCompetition(){
         }
     }
 }
-
-// void CompetitorControlSystem::LogPose(geometry_msgs::msg::Pose p)
-// {
-//   tf2::Quaternion q(
-//     p.orientation.x,
-//     p.orientation.y,
-//     p.orientation.z,
-//     p.orientation.w);
-//   tf2::Matrix3x3 m(q);
-//   double roll, pitch, yaw;
-//   m.getRPY(roll, pitch, yaw);
-
-//   roll *= 180/M_PI;
-//   pitch *= 180/M_PI;
-//   yaw *= 180/M_PI;
-
-//   RCLCPP_INFO(get_logger(), "(X: %.2f, Y: %.2f, Z: %.2f, R: %.2f, P: %.2f, Y: %.2f)",
-//                  p.position.x, p.position.y, p.position.z,
-//                  roll, pitch, yaw);
-// }
 
 bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order_){
     
@@ -871,45 +870,82 @@ bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
     return true;
 }
 
+int CompetitorControlSystem::ConveyorPartPickLocation(){
+    int diff{breakbeam_one_counter - breakbeam_two_counter};
+    if(diff > 1)
+        return 2; 
+    else
+        return 1;
+
+}
+
 bool CompetitorControlSystem::FloorRobotConveyorPartspickup(){
     floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup);
     FloorRobotMovetoTarget();
-    // FloorRobotSetGripperState(true);
     
     geometry_msgs::msg::Pose part_pose;
     bool found_part = false;
-    
-    
+
     uint8_t part_type;
     uint8_t part_color;
 
-    while(!conveyor_camera_received_data){
-        // RCLCPP_INFO(this->get_logger(), "Waiting for part on conveyor");
-    }
+    while(!conveyor_camera_received_data){}
 
     conv_part_current = conv_part_;
     part_pose = MultiplyPose(conv_camera_pose_, conv_part_current[0].pose);
     part_type = conv_part_current[0].part.type;
     part_color = conv_part_current[0].part.color;
 
-    // double part_rotation = GetYaw(part_pose);
-
+    // Deciding location where part need be pickedup
+    // int location = ConveyorPartPickLocation();
+    // if (location == 1)
+    //     location = conveyor_pickup_location_one;
+    // else if (location == 2)
+    //     location = conveyor_pickup_location_two;
     std::vector<geometry_msgs::msg::Pose> waypoints;
-    // waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y - 2.5, 
-    //     part_pose.position.z+ 0.3, SetRobotOrientation(0)));
 
-    waypoints.push_back(BuildPose(part_pose.position.x, 0.65 , 
+    waypoints.push_back(BuildPose(part_pose.position.x, conveyor_pickup_location_one , 
         part_pose.position.z + part_heights_[part_type] + pick_offset_-0.001, SetRobotOrientation(0)));
     
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
     
     FloorRobotSetGripperState(true);
-    // function to move robot at 0.2m/s
-    // function for robot to go down to pickup part(x, y, z) // x-from camera pose, y-changes with time, z-part height
-    while (breakbeam_end_received_data== false){}
-    breakbeam_end_received_data == false; 
+
+    // if (location == conveyor_pickup_location_one){
+        while (breakbeam_start_received_data== false){}
+        breakbeam_start_received_data == false; 
+    // }
+        
+    // else if (location = conveyor_pickup_location_two){
+    //     while (breakbeam_end_received_data== false){}
+    //     breakbeam_end_received_data = false;
+    // }
     FloorRobotWaitForAttach(2.0); 
 
+    waypoints.push_back(BuildPose(part_pose.position.x, conveyor_pickup_location_one , 
+        part_pose.position.z + 0.5, SetRobotOrientation(0)));
+    
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+
+    //Moving to bins to place parts
+
+    floor_robot_.setJointValueTarget("linear_actuator_joint", rail_positions_["right_bins"]);
+    floor_robot_.setJointValueTarget("floor_shoulder_pan_joint", 0);
+    FloorRobotMovetoTarget();
+
+    waypoints.push_back(BuildPose(-1.72, 2.62 , 
+        0.723480 - drop_height_, SetRobotOrientation(0)));
+    
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+    FloorRobotSetGripperState(false); 
+
+    waypoints.clear();
+    waypoints.push_back(BuildPose(1.079, -0.15498 , 
+        1.8 + 0.3,
+        SetRobotOrientation(0)));
+    FloorRobotMoveCartesian(waypoints, 0.2, 0.1);
+
+    return true;
 
 }
 
@@ -999,11 +1035,11 @@ bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
 {   
     FloorRobotConveyorPartspickup();
 
-    FloorRobotSendHome();
+    // FloorRobotSendHome();
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
 
-    std::string station;
-    FloorRobotChangeGripper(station, "parts");
+    // std::string station;
+    // FloorRobotChangeGripper(station, "parts");
 
     for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
         if(kit_part->second.second != NULL){
@@ -1025,16 +1061,38 @@ bool CompetitorControlSystem::CompleteAssemblyTask(AssemblyInfo task)
     return true;
 }
 
+int AGVAvailable(int station){
+    if (station == ariac_msgs::msg::CombinedTask::AS1 || station == ariac_msgs::msg::CombinedTask::AS2){
+        return 2;
+    }
+    else if (station == ariac_msgs::msg::CombinedTask::AS3 || station == ariac_msgs::msg::CombinedTask::AS4){
+        return 3;
+    }
+}
+
+int TrayAvailable(int station){
+    // Check table 1
+    if(kts1_trays_){
+        return kts1_trays_[0].id;
+    }
+    // Check table 2
+    else if(kts2_trays_){
+        return kts2_trays_[0].id;
+    }
+    else 
+        return 0; 
+}
+
 bool CompetitorControlSystem::CompleteCombinedTask(CombinedInfo task){
 
     FloorRobotSendHome();
-    uint8_t agv = task.station;
-    int tray = 1;
+    // uint8_t agv = task.station;
+    // int tray = 1;
 
     RCLCPP_INFO_STREAM(get_logger()," Choosing AGV : '"<< std::to_string(agv) << "' and Tray ID: '"<< std::to_string(tray)<<"' for combined task");
     // Functions will be updated during RWA3
-    // agv = AGVAvailable(task.station);
-    // tray = TrayAvailable(task.station);
+    agv = AGVAvailable(task.station);
+    tray = TrayAvailable(task.station);
 
     FloorRobotSendHome();
     FloorRobotPickandPlaceTray(tray, agv);

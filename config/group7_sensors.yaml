@@ -27,21 +27,21 @@ sensors:
     type: break_beam
     visualize_fov: true
     pose:
-      xyz: [-0.36, 3.5, 0.88]
+      xyz: [-0.385, 0.8, 0.88]
       rpy: [0, 0, pi]
-
+    
   conv_beam2:
     type: break_beam
     visualize_fov: true
     pose:
-      xyz: [-0.36, 0.8, 0.88]
+      xyz: [-0.385, -2.0, 0.88]
       rpy: [0, 0, pi]
 
   conv_camera1:
     type: advanced_logical_camera
     visualize_fov: true
     pose:
-      xyz: [-0.4, 3.0, 1.8]
+      xyz: [-0.6, 3.5, 1.2]
       rpy: [pi, pi/2, -pi/2]
 
 
