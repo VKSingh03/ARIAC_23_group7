@@ -5,6 +5,8 @@
 # include <vector>
 # include <iostream>  
 #include <fstream>
+#include <cmath>
+#define M_PI 3.14159265358979323846
 
 std::string CompetitorControlSystem::DestinationtoString(uint8_t dest){
     if (dest == ariac_msgs::msg::KittingTask::ASSEMBLY_FRONT)
@@ -429,18 +431,20 @@ void CompetitorControlSystem::FloorRobotSendHome(){
 
 bool CompetitorControlSystem::LockAGVTray(int agv_num)
 {
-  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
 
-  std::string srv_name = "/ariac/agv" + std::to_string(agv_num) + "_lock_tray";
+    std::string srv_name = "/ariac/agv" + std::to_string(agv_num) + "_lock_tray";
 
-  client = this->create_client<std_srvs::srv::Trigger>(srv_name);
+    client = this->create_client<std_srvs::srv::Trigger>(srv_name);
 
-  auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+    auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+        
+    auto result =client->async_send_request(request);
+    result.wait();
+    RCLCPP_INFO_STREAM(get_logger()," Locking AGV for Assembly Task");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 
-  auto result =client->async_send_request(request);
-  result.wait();
-
-  return result.get()->success;
+    return result.get()->success;
 }
 
 bool CompetitorControlSystem::FloorRobotMovetoTarget()
@@ -864,7 +868,7 @@ bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<
 
     FloorRobotSetGripperState(true);
 
-    FloorRobotWaitForAttach(3.0);
+    FloorRobotWaitForAttach(2.0);
 
     // Add part to planning scene
     std::string part_name = part_colors_[part_color] + "_" + part_types_[part_type];
@@ -1350,99 +1354,99 @@ bool CompetitorControlSystem::CeilingRobotPickAGVPart(ariac_msgs::msg::PartPose 
 
 }
 
-// bool CompetitorControlSystem::CeilingRobotAssemblePart(int station, ariac_msgs::msg::AssemblyPart part)
-// {
-//   // Check that part is attached and matches part to assemble
-//   if (!ceiling_gripper_state_.attached) {
-//     RCLCPP_WARN(get_logger(), "No part attached");
-//     return false;
-//   }
-      
-//   if (part.part != ceiling_robot_attached_part_){
-//     RCLCPP_WARN(get_logger(), "Incorrect part attached for this assembly");
-//     return false;
-//   }
-  
-//   // Calculate assembled pose in world frame
-//   std::string insert_frame_name;
-//   switch (station) {
-//     case 1:
-//       insert_frame_name = "as1_insert_frame";
-//       break;
-//     case 2:
-//       insert_frame_name = "as2_insert_frame";
-//       break;
-//     case 3:
-//       insert_frame_name = "as3_insert_frame";
-//       break;
-//     case 4:
-//       insert_frame_name = "as4_insert_frame";
-//       break;
-//     default:
-//       RCLCPP_WARN(get_logger(), "Not a valid assembly station");
-//       return false;
-//   }
+bool CompetitorControlSystem::CeilingRobotAssemblePart(int station, ariac_msgs::msg::AssemblyPart part)
+{
+    // Check that part is attached and matches part to assemble
+    if (!ceiling_gripper_state_.attached) {
+        RCLCPP_WARN(get_logger(), "No part attached");
+        return false;
+    }
+        
+    if (part.part != ceiling_robot_attached_part_){
+        RCLCPP_WARN(get_logger(), "Incorrect part attached for this assembly");
+        return false;
+    }
+    
+    // Calculate assembled pose in world frame
+    std::string insert_frame_name;
+    switch (station) {
+        case 1:
+        insert_frame_name = "as1_insert_frame";
+        break;
+        case 2:
+        insert_frame_name = "as2_insert_frame";
+        break;
+        case 3:
+        insert_frame_name = "as3_insert_frame";
+        break;
+        case 4:
+        insert_frame_name = "as4_insert_frame";
+        break;
+        default:
+        RCLCPP_WARN(get_logger(), "Not a valid assembly station");
+        return false;
+    }
 
-//   // Calculate robot positions at assembly and approach
-//   KDL::Vector install(part.install_direction.x, part.install_direction.y, part.install_direction.z);
+    // Calculate robot positions at assembly and approach
+    KDL::Vector install(part.install_direction.x, part.install_direction.y, part.install_direction.z);
 
-//   KDL::Frame insert;
-//   tf2::fromMsg(FrameWorldPose(insert_frame_name), insert);
+    KDL::Frame insert;
+    tf2::fromMsg(FrameWorldPose(insert_frame_name), insert);
 
-//   KDL::Frame part_assemble;
-//   tf2::fromMsg(part.assembled_pose.pose, part_assemble);
+    KDL::Frame part_assemble;
+    tf2::fromMsg(part.assembled_pose.pose, part_assemble);
 
-//   KDL::Frame part_to_gripper;
+    KDL::Frame part_to_gripper;
 
-//   // Build approach waypoints
-//   std::vector<geometry_msgs::msg::Pose> waypoints;
-//   if (part.part.type == ariac_msgs::msg::Part::BATTERY) {
-//     tf2::fromMsg(BuildPose(battery_grip_offset_, 0, part_heights_[part.part.type], QuaternionFromRPY(M_PI, 0, M_PI)), part_to_gripper);
+    // Build approach waypoints
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    if (part.part.type == ariac_msgs::msg::Part::BATTERY) {
+        tf2::fromMsg(BuildPose(battery_grip_offset_, 0, part_heights_[part.part.type], QuaternionFromRPY(M_PI, 0.0, M_PI)), part_to_gripper);
 
-//     KDL::Vector up(0, 0, 0.1);
-//     waypoints.push_back(tf2::toMsg(insert * KDL::Frame(up) * KDL::Frame(install * -0.06) * part_assemble * part_to_gripper));
-//     waypoints.push_back(tf2::toMsg(insert * KDL::Frame(install * -0.06) * part_assemble * part_to_gripper));    
+        KDL::Vector up(0, 0, 0.1);
+        waypoints.push_back(tf2::toMsg(insert * KDL::Frame(up) * KDL::Frame(install * -0.06) * part_assemble * part_to_gripper));
+        waypoints.push_back(tf2::toMsg(insert * KDL::Frame(install * -0.06) * part_assemble * part_to_gripper));    
 
-//   } else {
-//     tf2::fromMsg(BuildPose(0, 0, part_heights_[part.part.type], QuaternionFromRPY(M_PI, 0, M_PI)), part_to_gripper);
+    } else {
+        tf2::fromMsg(BuildPose(0, 0, part_heights_[part.part.type], QuaternionFromRPY(M_PI, 0.0, M_PI)), part_to_gripper);
 
-//     waypoints.push_back(tf2::toMsg(insert * KDL::Frame(install * -0.1) * part_assemble * part_to_gripper));
-//   }
-  
-//   // Move to approach position
-//   CeilingRobotMoveCartesian(waypoints, 0.3, 0.3, true);
+        waypoints.push_back(tf2::toMsg(insert * KDL::Frame(install * -0.1) * part_assemble * part_to_gripper));
+    }
+    
+    // Move to approach position
+    CeilingRobotMoveCartesian(waypoints, 0.3, 0.3, true);
 
-//   // Move to just before assembly position
-//   waypoints.clear();
-//   waypoints.push_back(tf2::toMsg(insert * KDL::Frame(install * -0.003) * part_assemble * part_to_gripper));
-//   CeilingRobotMoveCartesian(waypoints, 0.1, 0.1, true);
+    // Move to just before assembly position
+    waypoints.clear();
+    waypoints.push_back(tf2::toMsg(insert * KDL::Frame(install * -0.003) * part_assemble * part_to_gripper));
+    CeilingRobotMoveCartesian(waypoints, 0.1, 0.1, true);
 
-//   CeilingRobotWaitForAssemble(station, part);
+    CeilingRobotWaitForAssemble(station, part);
 
-//   CeilingRobotSetGripperState(false);
+    CeilingRobotSetGripperState(false);
 
-//   std::string part_name = part_colors_[ceiling_robot_attached_part_.color] + 
-//     "_" + part_types_[ceiling_robot_attached_part_.type];
-//   ceiling_robot_.detachObject(part_name);
+    std::string part_name = part_colors_[ceiling_robot_attached_part_.color] + 
+        "_" + part_types_[ceiling_robot_attached_part_.type];
+    ceiling_robot_.detachObject(part_name);
 
-//   // Move away slightly
-//   auto current_pose = ceiling_robot_.getCurrentPose().pose;
+    // Move away slightly
+    auto current_pose = ceiling_robot_.getCurrentPose().pose;
 
-//   if (part.part.type == ariac_msgs::msg::Part::REGULATOR) {
-//     current_pose.position.x -= 0.05;
-//   }
-//   else {
-//     current_pose.position.z += 0.1;
-//   }
-  
-//   waypoints.clear();
-//   waypoints.push_back(current_pose);
+    if (part.part.type == ariac_msgs::msg::Part::REGULATOR) {
+        current_pose.position.x -= 0.05;
+    }
+    else {
+        current_pose.position.z += 0.1;
+    }
+    
+    waypoints.clear();
+    waypoints.push_back(current_pose);
 
-//   CeilingRobotMoveCartesian(waypoints, 0.3, 0.3, true);
-  
-//   return true;
+    CeilingRobotMoveCartesian(waypoints, 0.3, 0.3, true);
+    
+    return true;
 
-// }
+}
 
 bool CompetitorControlSystem::CeilingRobotSetGripperState(bool enable)
 {
@@ -1566,14 +1570,91 @@ bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
     return true;
 }
 
-bool CompetitorControlSystem::CompleteAssemblyTask(AssemblyInfo task)
+bool CompetitorControlSystem::CompleteAssemblyTask(OrderData current_order_)
 {   
+    AssemblyInfo task = current_order_.assembly;
     for ( int j = 0; j <(task.agv_numbers.size()); j++){
         LockAGVTray(task.agv_numbers[j]);
-        MoveAGVAsComb(task.agv_numbers[j], task.station);
+        int destination;
+        if (task.station == ariac_msgs::msg::AssemblyTask::AS1 or task.station == ariac_msgs::msg::AssemblyTask::AS3) {
+            destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_FRONT;
+        } else {
+            destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_BACK;
+        }
+
+        MoveAGVkitting(task.agv_numbers[j], destination);
+        // MoveAGVAsComb(task.agv_numbers[j], task.station);
     }
-    CeilingRobotSendHome();
-    CeilingRobotPickTrayPart(task);
+    // CeilingRobotSendHome();
+    // CeilingRobotPickTrayPart(task);
+
+    CeilingRobotMoveToAssemblyStation(task.station);
+
+    // Get Assembly Poses
+    auto request = std::make_shared<ariac_msgs::srv::GetPreAssemblyPoses::Request>();
+    request->order_id = current_order_.id;
+    auto result = pre_assembly_poses_getter_->async_send_request(request);
+    
+    result.wait();
+
+    std::vector<ariac_msgs::msg::PartPose> agv_part_poses; 
+    if (result.get()->valid_id) {
+        agv_part_poses = result.get()->parts;
+
+        if (agv_part_poses.size() == 0) {
+        RCLCPP_WARN(get_logger(), "No part poses recieved");
+        return false;
+        }
+    } else {
+        RCLCPP_WARN(get_logger(), "Not a valid order ID");
+        return false;
+    }
+
+    for (auto const &part_to_assemble : task.assembly_parts.parts_) {
+        // Check if matching part exists in agv_parts
+        bool part_exists = false;
+        ariac_msgs::msg::PartPose part_to_pick;
+        part_to_pick.part.color = part_to_assemble.color;
+        part_to_pick.part.type = part_to_assemble.type;
+        for (auto const &agv_part: agv_part_poses) {
+            if (agv_part.part.type == part_to_assemble.type && agv_part.part.color == part_to_assemble.color) {
+                part_exists = true;
+                part_to_pick.pose = agv_part.pose;
+                break;
+            }
+        }
+        if (!part_exists) {
+        RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.type << 
+            " and color: " << part_to_assemble.color << " not found on tray");
+        continue;
+        }
+
+        // Pick up part
+        CeilingRobotPickAGVPart(part_to_pick);
+
+        CeilingRobotMoveToAssemblyStation(task.station);
+        ariac_msgs::msg::AssemblyPart part;
+        
+        part.part.type = part_to_assemble.type;
+        part.part.color = part_to_assemble.color;
+        part.assembled_pose.header.stamp.sec = part_to_assemble.header_stamp_sec;
+        part.assembled_pose.header.stamp.nanosec = part_to_assemble.header_stamp_nanos;
+        part.assembled_pose.header.frame_id = part_to_assemble.frame_id;
+        part.assembled_pose.pose.position.x = part_to_assemble.position_x;
+        part.assembled_pose.pose.position.y = part_to_assemble.position_y;
+        part.assembled_pose.pose.position.z = part_to_assemble.position_z;
+        part.assembled_pose.pose.orientation.x = part_to_assemble.orientation_x;
+        part.assembled_pose.pose.orientation.y = part_to_assemble.orientation_y;
+        part.assembled_pose.pose.orientation.z = part_to_assemble.orientation_z;
+        part.assembled_pose.pose.orientation.w = part_to_assemble.orientation_w;
+        part.install_direction.x = part_to_assemble.install_direction_x;
+        part.install_direction.y = part_to_assemble.install_direction_y;
+        part.install_direction.z = part_to_assemble.install_direction_z;
+        // Assemble Part to insert
+        CeilingRobotAssemblePart(task.station, part);
+
+        CeilingRobotMoveToAssemblyStation(task.station);
+    }
     return true;
 }
 
@@ -1752,6 +1833,13 @@ void CompetitorControlSystem::CompleteOrders(){
             }
         }
 
+        if (total_parts_for_conveyor>0){
+            while((breakbeam_two_counter + conv_part_counter_breakbeam1) < total_parts_for_conveyor){
+                int location = ConveyorPartPickLocation(); 
+                FloorRobotConveyorPartspickup(location);
+            }
+        }
+
         OrderData current_order_ = orders_.front();
         orders_.erase(orders_.begin());
         total_orders--; 
@@ -1765,17 +1853,17 @@ void CompetitorControlSystem::CompleteOrders(){
             CompetitorControlSystem::SubmitOrder(current_order_.id);
         } 
         else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY) {
-            CompetitorControlSystem::CompleteAssemblyTask(current_order_.assembly);
+            CompetitorControlSystem::CompleteAssemblyTask(current_order_);
             // Submit order
             CompetitorControlSystem::SubmitOrder(current_order_.id);
         }
-        // else if (current_order_.type == ariac_msgs::msg::Order::COMBINED) {
-        //     CompetitorControlSystem::CompleteCombinedTask(current_order_);
-        //     // Submit order
-        //     CompetitorControlSystem::SubmitOrder(current_order_.id);
-        // }
+        else if (current_order_.type == ariac_msgs::msg::Order::COMBINED) {
+            CompetitorControlSystem::CompleteCombinedTask(current_order_);
+            // Submit order
+            CompetitorControlSystem::SubmitOrder(current_order_.id);
         }
     }
+}
 
 int main(int argc, char *argv[]){
     rclcpp::init(argc,argv);

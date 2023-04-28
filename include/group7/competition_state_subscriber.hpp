@@ -1,5 +1,8 @@
 #pragma once
 
+#include <rclcpp/qos.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
+
 # include <memory>
 # include "rclcpp/rclcpp.hpp"
 # include <ariac_msgs/msg/competition_state.hpp>
@@ -181,7 +184,7 @@ public:
     // Function for completing Kitting task
     bool CompleteKittingTask(KittingInfo task);
     // Function for completing Assembly task
-    bool CompleteAssemblyTask(AssemblyInfo task);
+    bool CompleteAssemblyTask(OrderData current_order_);
     // Function for completing Combined task
     bool CompleteCombinedTask(OrderData current_order_);
     // Function to complete Insufficient Parts Challange
