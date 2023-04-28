@@ -159,7 +159,6 @@ void CompetitorControlSystem::conveyor_camera_counter_cb(const ariac_msgs::msg::
     if (!detected_conveyor_camera && (msg->part_poses.size() != 0)) {
         RCLCPP_INFO(this->get_logger(), "Added part counter for conveyor ");
         detected_conveyor_camera = true;
-        // std::vector<ariac_msgs::msg::PartPose> part = msg->part_poses; 
         conv_part_.push_back(msg->part_poses[0]); 
         // RCLCPP_INFO_STREAM(get_logger()," Detected part:  '"<< (std::to_string(part[0].part.type))<<"'");
     }
@@ -185,7 +184,6 @@ void CompetitorControlSystem::breakbeam_start_counter_cb(const ariac_msgs::msg::
     if((msg->object_detected == true) && (detected_first_breakbeam == false)){
         breakbeam_one_counter += 1;
         detected_first_breakbeam = true; 
-        // std::this_thread::sleep_for(std::chrono::seconds(1));
         RCLCPP_INFO_STREAM(get_logger()," Breakbeam 1 counter '"<< (std::to_string(breakbeam_one_counter))<<"'");
     }
     else if ((msg->object_detected == false) && (detected_first_breakbeam == true)){
@@ -197,7 +195,6 @@ void CompetitorControlSystem::breakbeam_end_counter_cb(const ariac_msgs::msg::Br
     if( (msg->object_detected == true) && (detected_second_breakbeam == false)){
         breakbeam_two_counter +=1;
         detected_second_breakbeam = true; 
-        // std::this_thread::sleep_for(std::chrono::seconds(1));
         RCLCPP_INFO_STREAM(get_logger()," Breakbeam 2 counter '"<< (std::to_string(breakbeam_two_counter))<<"'");
     }
     else if ((msg->object_detected == false) && (detected_second_breakbeam == true)){
@@ -997,10 +994,16 @@ std::array<double,3> CompetitorControlSystem::BinAvailableLocation(int location)
 }
 
 bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
-    floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup);
-    FloorRobotMovetoTarget();
-    
+    if(location == 1){
+        floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup_1);
+        FloorRobotMovetoTarget();
+    }
+    else{
+        floor_robot_.setJointValueTarget(floor_conveyor_parts_pickup_2);
+        FloorRobotMovetoTarget();
+    }
     geometry_msgs::msg::Pose part_pose;
+    geometry_msgs::msg::Pose part_pose_stl;
     bool found_part = false;
 
     uint8_t part_type;
@@ -1023,7 +1026,9 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
         part_color = conv_part_current[0].part.color;
         waypoints.push_back(BuildPose(part_pose.position.x, conveyor_pickup_location_one,
             part_pose.position.z + part_heights_[part_type] + pick_offset_-0.001, SetRobotOrientation(0)));
-        conv_part_current.clear();
+        // conv_part_current.clear();
+        part_pose_stl = BuildPose(part_pose.position.x, conveyor_pickup_location_one,
+            part_pose.position.z + part_heights_[part_type] + pick_offset_-0.001, SetRobotOrientation(0)); 
         conv_part_counter_breakbeam1++; 
     }
     else if (location == 2){
@@ -1034,7 +1039,9 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
         part_color = conv_part_current[0].part.color;
         waypoints.push_back(BuildPose(part_pose.position.x, conveyor_pickup_location_two,
             part_pose.position.z + part_heights_[part_type] + pick_offset_-0.001, SetRobotOrientation(0)));
-        conv_part_current.clear();
+        // conv_part_current.clear();
+        part_pose_stl = BuildPose(part_pose.position.x, conveyor_pickup_location_two,
+            part_pose.position.z + part_heights_[part_type] + pick_offset_-0.001, SetRobotOrientation(0)); 
     }
     
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
@@ -1045,11 +1052,17 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
     if ((breakbeam_two_counter + conv_part_counter_breakbeam1) == total_parts_for_conveyor){
         return false; 
     }
-
+    std::string part_name = part_colors_[part_color] + "_" + part_types_[part_type];
     if (location == 1){
         breakbeam_start_received_data = false; 
         while (breakbeam_start_received_data == false){}
         FloorRobotWaitForAttach(2.0); 
+
+        // Add part to planning scene
+        // std::string part_name = part_colors_[part_color] + "_" + part_types_[part_type];
+        AddModelToPlanningScene(part_name, part_types_[part_type] + ".stl", part_pose_stl);
+        floor_robot_.attachObject(part_name);
+        floor_robot_attached_part_ = conv_part_current[0].part;
         breakbeam_start_received_data = false; 
         waypoints.push_back(BuildPose(part_pose.position.x, conveyor_pickup_location_one, 
             part_pose.position.z + 0.5, SetRobotOrientation(0)));
@@ -1060,6 +1073,11 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
         while (breakbeam_end_received_data == false){}
         
         FloorRobotWaitForAttach(2.0); 
+        // Add part to planning scene
+        // std::string part_name = part_colors_[part_color] + "_" + part_types_[part_type];
+        AddModelToPlanningScene(part_name, part_types_[part_type] + ".stl", part_pose_stl);
+        floor_robot_.attachObject(part_name);
+        floor_robot_attached_part_ = conv_part_current[0].part;
         breakbeam_end_received_data = false;
         waypoints.push_back(BuildPose(part_pose.position.x, conveyor_pickup_location_two, 
             part_pose.position.z + 0.5, SetRobotOrientation(0)));
@@ -1088,7 +1106,7 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
 
         FloorRobotSetGripperState(false); 
         RCLCPP_INFO_STREAM(get_logger()," Placed part at pose: '"<< std::to_string(part_drop_pose.position.x)<<std::to_string( part_drop_pose.position.y ));
-        
+        floor_robot_.detachObject(part_name);
         waypoints.clear();
         waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y , part_drop_pose.position.z + 0.5, SetRobotOrientation(0)));
         FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
@@ -1111,11 +1129,12 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
 
         FloorRobotSetGripperState(false); 
         RCLCPP_INFO_STREAM(get_logger()," Placed part at pose: '"<< std::to_string(part_drop_pose.position.x)<<std::to_string( part_drop_pose.position.y ));
-        
+        floor_robot_.detachObject(part_name);
         waypoints.clear();
         waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y , part_drop_pose.position.z + 0.5, SetRobotOrientation(0)));
         FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
     }
+    conv_part_current.clear();
 
     return true;
 }

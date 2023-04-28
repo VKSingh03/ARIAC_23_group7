@@ -487,8 +487,18 @@ private:
         {"floor_wrist_3_joint", 0.0}
     };
 
-    std::map<std::string, double> floor_conveyor_parts_pickup = {
-        {"linear_actuator_joint", 0},
+    std::map<std::string, double> floor_conveyor_parts_pickup_1 = {
+        {"linear_actuator_joint", -0.5},
+        {"floor_shoulder_pan_joint", 3.14},
+        {"floor_shoulder_lift_joint", -1.0},
+        {"floor_elbow_joint", 2.13},
+        {"floor_wrist_1_joint", -2.76},
+        {"floor_wrist_2_joint", -1.51},
+        {"floor_wrist_3_joint", 0.0}
+    };
+
+    std::map<std::string, double> floor_conveyor_parts_pickup_2 = {
+        {"linear_actuator_joint", 2.3},
         {"floor_shoulder_pan_joint", 3.14},
         {"floor_shoulder_lift_joint", -1.0},
         {"floor_elbow_joint", 2.13},
