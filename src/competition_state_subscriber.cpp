@@ -910,7 +910,7 @@ bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<
     return true;
 }
 
-bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no ){
+bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no, std::string order_id ){
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
     uint8_t part_location = part.second;
@@ -1570,14 +1570,15 @@ void CompetitorControlSystem::CeilingRobotWaitForAttach(double timeout)
 //         return 0; 
 // }
 
-bool CompetitorControlSystem::CompleteKittingTask(KittingInfo task)
+bool CompetitorControlSystem::CompleteKittingTask(OrderData current_order_)
 {   
+    KittingInfo task = current_order_.kitting;
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
 
     for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
         if(kit_part->second.second != NULL){
             FloorRobotPickBinPart(kit_part->first, kit_part->second);
-            FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number);
+            FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
         }
     }
     MoveAGV(task.agv_number, task.destination);
@@ -1717,7 +1718,7 @@ bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
     for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
         if(kit_part->second.second != NULL){
             FloorRobotPickBinPart(kit_part->first, kit_part->second);
-            FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv);
+            FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv, current_order_.id);
         }
     }
     
@@ -1846,7 +1847,7 @@ bool CompetitorControlSystem::CompleteOrders(){
         CompetitorControlSystem::InsufficientPartsChallange(current_order_);
 
         if (current_order_.type == ariac_msgs::msg::Order::KITTING) {
-            CompetitorControlSystem::CompleteKittingTask(current_order_.kitting);
+            CompetitorControlSystem::CompleteKittingTask(current_order_);
             // Submit order
             CompetitorControlSystem::SubmitOrder(current_order_.id);
         } 

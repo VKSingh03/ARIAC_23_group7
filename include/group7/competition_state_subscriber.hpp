@@ -182,7 +182,7 @@ public:
     // Function for completing orders
     bool CompleteOrders();
     // Function for completing Kitting task
-    bool CompleteKittingTask(KittingInfo task);
+    bool CompleteKittingTask(OrderData current_order_);
     // Function for completing Assembly task
     bool CompleteAssemblyTask(OrderData current_order_);
     // Function for completing Combined task
@@ -205,7 +205,7 @@ public:
     std::string StationtoString(uint8_t station);
     
     //Kitting Task Functions: 
-    bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
+    bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no, std::string order_id );
     bool MoveAGV(uint8_t agv, uint8_t destination);
     bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
