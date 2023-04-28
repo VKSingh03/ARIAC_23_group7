@@ -18,12 +18,15 @@
 #include <ariac_msgs/msg/vacuum_gripper_state.hpp>
 #include <ariac_msgs/msg/advanced_logical_camera_image.hpp>
 #include <ariac_msgs/msg/break_beam_status.hpp>
+#include <ariac_msgs/msg/agv_status.hpp>
+#include <ariac_msgs/msg/assembly_state.hpp>
 
 #include <ariac_msgs/srv/change_gripper.hpp>
 #include <ariac_msgs/srv/vacuum_gripper_control.hpp>
 #include <ariac_msgs/srv/move_agv.hpp>
 #include <ariac_msgs/srv/submit_order.hpp>
 #include <ariac_msgs/srv/perform_quality_check.hpp>
+#include <ariac_msgs/srv/get_pre_assembly_poses.hpp>
 
 #include <geometric_shapes/shapes.h>
 #include <geometric_shapes/shape_operations.h>
@@ -60,11 +63,15 @@ public:
     planning_scene_()
     {
         // Use upper joint velocity and acceleration limits
-        floor_robot_.setMaxAccelerationScalingFactor(2.0);
-        floor_robot_.setMaxVelocityScalingFactor(2.0);
+        floor_robot_.setMaxAccelerationScalingFactor(1.0);
+        floor_robot_.setMaxVelocityScalingFactor(1.0);
 
         ceiling_robot_.setMaxAccelerationScalingFactor(1.0);
         ceiling_robot_.setMaxVelocityScalingFactor(1.0);
+
+        rclcpp::SubscriptionOptions options;
+        topic_cb_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+        options.callback_group = topic_cb_group_;
 
         // Subscriber to competition state for Launching Competition
         competition_state_subscriber = this->create_subscription<ariac_msgs::msg::CompetitionState>("/ariac/competition_state", 10, 
@@ -81,6 +88,9 @@ public:
         // Subscriber to floor gripper state
         floor_gripper_state_sub_ = this->create_subscription<ariac_msgs::msg::VacuumGripperState>("/ariac/floor_robot_gripper_state", 
         rclcpp::SensorDataQoS(), std::bind(&CompetitorControlSystem::floor_gripper_state_cb, this, std::placeholders::_1));
+        // Subscriber to ceiling gripper state
+        ceiling_gripper_state_sub_ = this->create_subscription<ariac_msgs::msg::VacuumGripperState>("/ariac/ceiling_robot_gripper_state", 
+        rclcpp::SensorDataQoS(), std::bind(&CompetitorControlSystem::ceiling_gripper_state_cb, this, std::placeholders::_1));        
         
         // Subscribers to sensors
         kts1_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
@@ -103,6 +113,10 @@ public:
             "/ariac/sensors/conv_camera1/image", rclcpp::SensorDataQoS(), 
             std::bind(&CompetitorControlSystem::conveyor_camera_cb, this, std::placeholders::_1));
 
+        conveyor_camera_counter_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
+            "/ariac/sensors/conv_camera1/image", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::conveyor_camera_counter_cb, this, std::placeholders::_1));
+
         breakbeam_start_sub_ = this->create_subscription<ariac_msgs::msg::BreakBeamStatus>(
             "/ariac/sensors/conv_beam1/status", rclcpp::SensorDataQoS(), 
             std::bind(&CompetitorControlSystem::breakbeam_start_cb, this, std::placeholders::_1));
@@ -111,12 +125,48 @@ public:
             "/ariac/sensors/conv_beam2/status", rclcpp::SensorDataQoS(), 
             std::bind(&CompetitorControlSystem::breakbeam_end_cb, this, std::placeholders::_1));
 
+        breakbeam_start_counter_sub_ = this->create_subscription<ariac_msgs::msg::BreakBeamStatus>(
+            "/ariac/sensors/conv_beam1/status", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::breakbeam_start_counter_cb, this, std::placeholders::_1));
+
+        breakbeam_end_counter_sub_ = this->create_subscription<ariac_msgs::msg::BreakBeamStatus>(
+            "/ariac/sensors/conv_beam2/status", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::breakbeam_end_counter_cb, this, std::placeholders::_1));
+
+        agv1_sub_ = this->create_subscription<ariac_msgs::msg::AGVStatus>("/ariac/agv1_status", 10, 
+            std::bind(&CompetitorControlSystem::agv1_cb, this, std::placeholders::_1));
+
+        agv2_sub_ = this->create_subscription<ariac_msgs::msg::AGVStatus>("/ariac/agv2_status", 10, 
+            std::bind(&CompetitorControlSystem::agv2_cb, this, std::placeholders::_1));
+
+        agv3_sub_ = this->create_subscription<ariac_msgs::msg::AGVStatus>("/ariac/agv3_status", 10, 
+            std::bind(&CompetitorControlSystem::agv3_cb, this, std::placeholders::_1));
+
+        agv4_sub_ = this->create_subscription<ariac_msgs::msg::AGVStatus>("/ariac/agv4_status", 10, 
+            std::bind(&CompetitorControlSystem::agv4_cb, this, std::placeholders::_1));
+
+        as1_state_sub_ = this->create_subscription<ariac_msgs::msg::AssemblyState>(
+            "/ariac/assembly_insert_1_assembly_state", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::as1_state_cb, this, std::placeholders::_1));
+        
+        as2_state_sub_ = this->create_subscription<ariac_msgs::msg::AssemblyState>(
+            "/ariac/assembly_insert_2_assembly_state", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::as2_state_cb, this, std::placeholders::_1));
+
+        as3_state_sub_ = this->create_subscription<ariac_msgs::msg::AssemblyState>(
+            "/ariac/assembly_insert_3_assembly_state", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::as3_state_cb, this, std::placeholders::_1));
+
+        as4_state_sub_ = this->create_subscription<ariac_msgs::msg::AssemblyState>(
+            "/ariac/assembly_insert_4_assembly_state", rclcpp::SensorDataQoS(), 
+            std::bind(&CompetitorControlSystem::as4_state_cb, this, std::placeholders::_1));
+
         // Initialize service clients 
         // quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
-        // pre_assembly_poses_getter_ = this->create_client<ariac_msgs::srv::GetPreAssemblyPoses>("/ariac/get_pre_assembly_poses");
+        pre_assembly_poses_getter_ = this->create_client<ariac_msgs::srv::GetPreAssemblyPoses>("/ariac/get_pre_assembly_poses");
         floor_robot_tool_changer_ = this->create_client<ariac_msgs::srv::ChangeGripper>("/ariac/floor_robot_change_gripper");
         floor_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/floor_robot_enable_gripper");
-        // ceiling_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/ceiling_robot_enable_gripper");
+        ceiling_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/ceiling_robot_enable_gripper");
     }
 
     // Functions to complete specific tasks 
@@ -133,7 +183,7 @@ public:
     // Function for completing Assembly task
     bool CompleteAssemblyTask(AssemblyInfo task);
     // Function for completing Combined task
-    bool CompleteCombinedTask(CombinedInfo task);
+    bool CompleteCombinedTask(OrderData current_order_);
     // Function to complete Insufficient Parts Challange
     bool InsufficientPartsChallange(OrderData current_order_);
     // Function to Submit Orders
@@ -152,27 +202,40 @@ public:
     //Kitting Task Functions: 
     bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
     bool MoveAGVkitting(uint8_t agv, uint8_t destination);
-    void MoveAGVAsComb(uint8_t agv, uint8_t station);
     bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
     void FloorRobotSendHome();
     bool FloorRobotPickandPlaceTray(int tray_id, int agv_no);
-    bool FloorRobotConveyorPartspickup();
+    bool FloorRobotConveyorPartspickup(int location);
     bool FloorRobotSetGripperState(bool enable);
     bool LockAGVTray(int agv_num);
-
+    std::array<double,3> BinAvailableLocation(int location);
+    
     // Assembly Task Functions: 
     void CeilingRobotSendHome();
     void CeilingRobotPickTrayPart(AssemblyInfo task);
     void CeilingRobotPickTrayPart(CombinedInfo task);
+    bool MoveAGVAsComb(uint8_t agv, uint8_t station);
     // void CeilingRobotPlacePartInInsert();
 
     //Combined Task Functioms: 
     void CombinedTaskAssemblyUpdate(CombinedInfo task);
-    int AGVAvailable();
-    int TrayAvailable();
+    int AGVAvailable(int station);
+    int TrayAvailable(int station);
+    bool CeilingRobotMoveToAssemblyStation(int station);
+    bool CeilingRobotMovetoTarget();
+    bool CeilingRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf, bool avoid_collisions);
+    bool CeilingRobotPickAGVPart(ariac_msgs::msg::PartPose part);
+    bool CeilingRobotAssemblePart(int station, ariac_msgs::msg::AssemblyPart part);
+    void CeilingRobotWaitForAttach(double timeout);
+    bool CeilingRobotSetGripperState(bool enable);
+    bool CeilingRobotWaitForAssemble(int station, ariac_msgs::msg::AssemblyPart part);
 
 private:
+
+    // Callback Groups
+    rclcpp::CallbackGroup::SharedPtr client_cb_group_;
+    rclcpp::CallbackGroup::SharedPtr topic_cb_group_;
 
     // Robot Move Functions
     bool FloorRobotMovetoTarget();
@@ -191,15 +254,35 @@ private:
     // Subscriber to Converyor status
     rclcpp::Subscription<ariac_msgs::msg::ConveyorParts>::SharedPtr conveyor_state_subscriber; 
     // Subscriber to Floor Robot Gripper type
-    rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr floor_gripper_state_sub_;
+    // Subscriber to Ceiling Robot Gripper type
+    rclcpp::Subscription<ariac_msgs::msg::VacuumGripperState>::SharedPtr ceiling_gripper_state_sub_; 
     //Sensors subscriber
-    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts1_camera_sub_;
-    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts2_camera_sub_;
-    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr left_bins_camera_sub_;
-    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr right_bins_camera_sub_;
-    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr conveyor_camera_sub_;
-    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_start_sub_;
-    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_end_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts1_camera_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr kts2_camera_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr left_bins_camera_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr right_bins_camera_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr conveyor_camera_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>::SharedPtr conveyor_camera_counter_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_start_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_end_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_start_counter_sub_; 
+    rclcpp::Subscription<ariac_msgs::msg::BreakBeamStatus>::SharedPtr breakbeam_end_counter_sub_; 
+    //AGV status subscribers. Used for combined task
+    rclcpp::Subscription<ariac_msgs::msg::AGVStatus>::SharedPtr agv1_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AGVStatus>::SharedPtr agv2_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AGVStatus>::SharedPtr agv3_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AGVStatus>::SharedPtr agv4_sub_;
+
+    rclcpp::Subscription<ariac_msgs::msg::AssemblyState>::SharedPtr as1_state_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AssemblyState>::SharedPtr as2_state_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AssemblyState>::SharedPtr as3_state_sub_;
+    rclcpp::Subscription<ariac_msgs::msg::AssemblyState>::SharedPtr as4_state_sub_;
+
+    // Breakbeam part counter logic variables
+    bool detected_first_breakbeam{false};
+    bool detected_second_breakbeam{false};
+    bool detected_conveyor_camera{false}; 
 
     // Sensor poses
     geometry_msgs::msg::Pose kts1_camera_pose_;
@@ -208,6 +291,15 @@ private:
     geometry_msgs::msg::Pose right_bins_camera_pose_;
     geometry_msgs::msg::Pose conveyor_camera_pose;
     geometry_msgs::msg::Pose conv_camera_pose_; 
+
+    // Assembly States
+    std::map<int, ariac_msgs::msg::AssemblyState> assembly_station_states_;
+
+    // AGV Location
+    int agv1_location; 
+    int agv2_location; 
+    int agv3_location; 
+    int agv4_location; 
 
     // Sensor Callbacks
     bool kts1_camera_recieved_data = false; 
@@ -223,14 +315,23 @@ private:
     void left_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void right_bins_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void conveyor_camera_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
+    void conveyor_camera_counter_cb(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void breakbeam_start_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
     void breakbeam_end_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
+    void breakbeam_start_counter_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
+    void breakbeam_end_counter_cb(const ariac_msgs::msg::BreakBeamStatus::ConstSharedPtr msg);
 
     int breakbeam_one_counter{0};
     int breakbeam_two_counter{0};
     int ConveyorPartPickLocation();
     double conveyor_pickup_location_one = 0.65;
     double conveyor_pickup_location_two = -2.15;
+
+    //AGV status callbacks
+    void agv1_cb(const ariac_msgs::msg::AGVStatus::ConstSharedPtr msg);
+    void agv2_cb(const ariac_msgs::msg::AGVStatus::ConstSharedPtr msg);
+    void agv3_cb(const ariac_msgs::msg::AGVStatus::ConstSharedPtr msg);
+    void agv4_cb(const ariac_msgs::msg::AGVStatus::ConstSharedPtr msg);
 
     // Helper Functions
     void LogPose(geometry_msgs::msg::Pose p);
@@ -256,7 +357,7 @@ private:
     // Bins
     std::vector<ariac_msgs::msg::PartPose> left_bins_parts_;
     std::vector<ariac_msgs::msg::PartPose> right_bins_parts_;
-    std::vector<ariac_msgs::msg::PartPose> conv_part_;
+    std::vector<ariac_msgs::msg::PartPose> conv_part_; 
     std::vector<ariac_msgs::msg::PartPose> conv_part_current;
 
     // MoveIt Interfaces
@@ -268,10 +369,10 @@ private:
 
     // ARIAC Services
     // rclcpp::Client<ariac_msgs::srv::PerformQualityCheck>::SharedPtr quality_checker_;
-    // rclcpp::Client<ariac_msgs::srv::GetPreAssemblyPoses>::SharedPtr pre_assembly_poses_getter_;
+    rclcpp::Client<ariac_msgs::srv::GetPreAssemblyPoses>::SharedPtr pre_assembly_poses_getter_;
     rclcpp::Client<ariac_msgs::srv::ChangeGripper>::SharedPtr floor_robot_tool_changer_;
     rclcpp::Client<ariac_msgs::srv::VacuumGripperControl>::SharedPtr floor_robot_gripper_enable_;
-    // rclcpp::Client<ariac_msgs::srv::VacuumGripperControl>::SharedPtr ceiling_robot_gripper_enable_;
+    rclcpp::Client<ariac_msgs::srv::VacuumGripperControl>::SharedPtr ceiling_robot_gripper_enable_;
 
     // Variables: 
     // Variable to store competition state 
@@ -283,6 +384,8 @@ private:
     // Gripper State
     ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
     ariac_msgs::msg::Part floor_robot_attached_part_;
+    ariac_msgs::msg::VacuumGripperState ceiling_gripper_state_;
+    ariac_msgs::msg::Part ceiling_robot_attached_part_;
 
     // Variable to store position of first priority order in the vector
     int first_priority_order{0};
@@ -292,6 +395,8 @@ private:
     int bin_read{0};
     // To store conveyor read status
     int conveyor_read{0};
+    int total_parts_for_conveyor{0};
+    int conv_part_counter_breakbeam1{0};
     
     // Data Structure to store and update bin data
     std::map<uint8_t, std::map<uint8_t, std::map<uint8_t, uint8_t>>> bin_dictionary = {
@@ -345,6 +450,13 @@ private:
     void conveyor_status_callback(const ariac_msgs::msg::ConveyorParts::ConstSharedPtr msg);
     // Floor robot Gripper State Callback
     void floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg);
+    // Ceiling robot Gripper State Callback
+    void ceiling_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg);
+
+    void as1_state_cb(const ariac_msgs::msg::AssemblyState::ConstSharedPtr msg);
+    void as2_state_cb(const ariac_msgs::msg::AssemblyState::ConstSharedPtr msg);
+    void as3_state_cb(const ariac_msgs::msg::AssemblyState::ConstSharedPtr msg);
+    void as4_state_cb(const ariac_msgs::msg::AssemblyState::ConstSharedPtr msg);
 
     std::map<std::string, double> rail_positions_ = {
         {"agv1", -4.5},
@@ -385,6 +497,54 @@ private:
         {"floor_wrist_3_joint", 0.0}
     };
 
+    std::map<std::string, double> ceiling_as1_js_ = {
+        {"gantry_x_axis_joint", 1},
+        {"gantry_y_axis_joint", -3},
+        {"gantry_rotation_joint", 1.571},
+        {"ceiling_shoulder_pan_joint", 0},
+        {"ceiling_shoulder_lift_joint", -2.37},
+        {"ceiling_elbow_joint", 2.37},
+        {"ceiling_wrist_1_joint", 3.14},
+        {"ceiling_wrist_2_joint", -1.57},
+        {"ceiling_wrist_3_joint", 0}
+    };
+
+    std::map<std::string, double> ceiling_as2_js_ = {
+        {"gantry_x_axis_joint", -4},
+        {"gantry_y_axis_joint", -3},
+        {"gantry_rotation_joint", 1.571},
+        {"ceiling_shoulder_pan_joint", 0},
+        {"ceiling_shoulder_lift_joint", -2.37},
+        {"ceiling_elbow_joint", 2.37},
+        {"ceiling_wrist_1_joint", 3.14},
+        {"ceiling_wrist_2_joint", -1.57},
+        {"ceiling_wrist_3_joint", 0}
+    };
+
+    std::map<std::string, double> ceiling_as3_js_ = {
+        {"gantry_x_axis_joint", 1},
+        {"gantry_y_axis_joint", 3},
+        {"gantry_rotation_joint", 1.571},
+        {"ceiling_shoulder_pan_joint", 0},
+        {"ceiling_shoulder_lift_joint", -2.37},
+        {"ceiling_elbow_joint", 2.37},
+        {"ceiling_wrist_1_joint", 3.14},
+        {"ceiling_wrist_2_joint", -1.57},
+        {"ceiling_wrist_3_joint", 0}
+    };
+
+    std::map<std::string, double> ceiling_as4_js_ = {
+        {"gantry_x_axis_joint", -4},
+        {"gantry_y_axis_joint", 3},
+        {"gantry_rotation_joint", 1.571},
+        {"ceiling_shoulder_pan_joint", 0},
+        {"ceiling_shoulder_lift_joint", -2.37},
+        {"ceiling_elbow_joint", 2.37},
+        {"ceiling_wrist_1_joint", 3.14},
+        {"ceiling_wrist_2_joint", -1.57},
+        {"ceiling_wrist_3_joint", 0}
+    };
+
     // Constants
     double kit_tray_thickness_ = 0.01;
     double drop_height_ = 0.002;
@@ -422,79 +582,44 @@ private:
         {ariac_msgs::msg::KittingPart::QUADRANT4, std::pair<double, double>(0.08, -0.12)},
     };
 
-    // left_bin = [std::make_pair(1.07711, 0.595),
-    //             std::make_pair(1.07712, 0.415),
-    //             std::make_pair(1.07739, 0.235001),
-    //             std::make_pair(1.07713, 0.595),
-    //             std::make_pair(1.07741, 0.415),
-    //             std::make_pair(1.07714, 0.235),
-    //             std::make_pair(1.0774, 0.595),
-    //             std::make_pair(1.07715, 0.415),
-    //             std::make_pair(1.07715, 0.235),
-    //             std::make_pair(1.079, -0.15498),
-    //             std::make_pair(1.07901, -0.33498),
-    //             std::make_pair(1.07901, -0.51498),
-    //             std::make_pair(1.07902, -0.15498),
-    //             std::make_pair(1.07902, -0.334981),
-    //             std::make_pair(1.07902, -0.514981),
-    //             std::make_pair(1.07902, -0.154981),
-    //             std::make_pair(1.07903, -0.334981),
-    //             std::make_pair(1.07903, -0.514981),
-    //             std::make_pair(1.07925, -0.154996),
-    //             std::make_pair(1.07925, -0.334996),
-    //             std::make_pair(1.07925, -0.514996),
-    //             std::make_pair(1.07925, -0.154996),
-    //             std::make_pair(1.07926, -0.334996),
-    //             std::make_pair(1.07926, -0.514996),
-    //             std::make_pair(1.07926, -0.154996),
-    //             std::make_pair(1.07926, -0.334996),
-    //             std::make_pair(1.07927, -0.514996),
-    //             std::make_pair(1.07715, 0.595),
-    //             std::make_pair(1.07716, 0.415),
-    //             std::make_pair(1.07718, 0.235),
-    //             std::make_pair(1.07716, 0.595),
-    //             std::make_pair(1.07718, 0.415),
-    //             std::make_pair(1.07717, 0.235),
-    //             std::make_pair(1.07719, 0.595),
-    //             std::make_pair(1.07718, 0.415),
-    //             std::make_pair(1.07718, 0.235)];
+    std::array<std::array<double, 3>, 18> right_bin{{
+        {1.07651, -0.235, -0.206007},
+        {1.07651, -0.415, -0.206007},
+        {1.07666, -0.595001, -0.206007},
+        {1.07652, -0.235, -0.386007},
+        {1.07675, -0.415, -0.386007},
+        {1.07651, -0.595, -0.386007},
+        {1.07675, -0.234999, -0.566007},
+        {1.07651, -0.415, -0.566007},
+        {1.07651, -0.595, -0.566007},
+        {1.07651, 0.51502, -0.206},
+        {1.07651, 0.33502, -0.206},
+        {1.07652, 0.15502, -0.206},
+        {1.07651, 0.51502, -0.386},
+        {1.07651, 0.33502, -0.386},
+        {1.07651, 0.15502, -0.386},
+        {1.07651, 0.51502, -0.566},
+        {1.07652, 0.33502, -0.566},
+        {1.07651, 0.15502, -0.566}}} ;
 
-    // right_bin =[std::make_pair(1.07685, -0.235),
-    //             std::make_pair(1.07686, -0.415),
-    //             std::make_pair(1.0773, -0.594999),
-    //             std::make_pair(1.07687, -0.235),
-    //             std::make_pair(1.07734, -0.415),
-    //             std::make_pair(1.07689, -0.595),
-    //             std::make_pair(1.07732, -0.235),
-    //             std::make_pair(1.0769, -0.415),
-    //             std::make_pair(1.07691, -0.595),
-    //             std::make_pair(1.07687, 0.515021),
-    //             std::make_pair(1.07688, 0.335021),
-    //             std::make_pair(1.07688, 0.155021),
-    //             std::make_pair(1.07689, 0.515021),
-    //             std::make_pair(1.07689, 0.335021),
-    //             std::make_pair(1.0769, 0.155021),
-    //             std::make_pair(1.07691, 0.515021),
-    //             std::make_pair(1.07691, 0.335021),
-    //             std::make_pair(1.07692, 0.155021),
-    //             std::make_pair(1.07908, 0.515006),
-    //             std::make_pair(1.07909, 0.335006),
-    //             std::make_pair(1.0791, 0.155006),
-    //             std::make_pair(1.0791, 0.515006),
-    //             std::make_pair(1.07911, 0.335006),
-    //             std::make_pair(1.07911, 0.155006),
-    //             std::make_pair(1.07912, 0.515006),
-    //             std::make_pair(1.07912, 0.335006),
-    //             std::make_pair(1.07913, 0.155006),
-    //             std::make_pair(1.07696, -0.235001),
-    //             std::make_pair(1.07697, -0.415001),
-    //             std::make_pair(1.07699, -0.595001),
-    //             std::make_pair(1.07698, -0.235001)
-    //             std::make_pair(1.077, -0.415),
-    //             std::make_pair(1.07699, -0.595001),
-    //             std::make_pair(1.07701, -0.235),
-    //             std::make_pair(1.077, -0.415),
-    //             std::make_pair(1.07701, -0.595)
-    //                 ];
+    std::array<std::array<double, 3>, 18> left_bin{{
+        {1.07651, 0.595, -0.206007},
+        {1.07651, 0.415, -0.206007},
+        {1.07678, 0.235, -0.206006},
+        {1.07651, 0.595, -0.386007},
+        {1.07691, 0.415, -0.386007},
+        {1.07652, 0.235, -0.386007},
+        {1.07682, 0.595001, -0.566007},
+        {1.07651, 0.415, -0.566007},
+        {1.07651, 0.235, -0.566007},
+        {1.07652, -0.15498, -0.206},
+        {1.07651, -0.33498, -0.206},
+        {1.07652, -0.51498, -0.206},
+        {1.07651, -0.15498, -0.386},
+        {1.07651, -0.33498, -0.386},
+        {1.07651, -0.51498, -0.386},
+        {1.07651, -0.15498, -0.566},
+        {1.07651, -0.33498, -0.566},
+        {1.07651, -0.51498, -0.566}}} ;
 
 }; 
