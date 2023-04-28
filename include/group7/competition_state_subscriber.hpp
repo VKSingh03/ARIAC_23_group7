@@ -180,7 +180,7 @@ public:
     // Function to update quantity for the given part on Conveyor
     void conveyor_set_quantity_for_this_part(uint8_t part, uint8_t color, int value);
     // Function for completing orders
-    void CompleteOrders();
+    bool CompleteOrders();
     // Function for completing Kitting task
     bool CompleteKittingTask(KittingInfo task);
     // Function for completing Assembly task
@@ -189,6 +189,8 @@ public:
     bool CompleteCombinedTask(OrderData current_order_);
     // Function to complete Insufficient Parts Challange
     bool InsufficientPartsChallange(OrderData current_order_);
+    // Function to Start the Competition
+    bool StartCompetition();
     // Function to Submit Orders
     bool SubmitOrder(std::string order_id);
     // Function for Ending Competition
@@ -204,7 +206,7 @@ public:
     
     //Kitting Task Functions: 
     bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no );
-    bool MoveAGVkitting(uint8_t agv, uint8_t destination);
+    bool MoveAGV(uint8_t agv, uint8_t destination);
     bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
     void FloorRobotSendHome();
@@ -216,15 +218,14 @@ public:
     
     // Assembly Task Functions: 
     void CeilingRobotSendHome();
-    void CeilingRobotPickTrayPart(AssemblyInfo task);
-    void CeilingRobotPickTrayPart(CombinedInfo task);
-    bool MoveAGVAsComb(uint8_t agv, uint8_t station);
+    // void CeilingRobotPickTrayPart(AssemblyInfo task);
+    // void CeilingRobotPickTrayPart(CombinedInfo task);
     // void CeilingRobotPlacePartInInsert();
 
     //Combined Task Functioms: 
     void CombinedTaskAssemblyUpdate(CombinedInfo task);
-    int AGVAvailable(int station);
-    int TrayAvailable(int station);
+    // int AGVAvailable(int station);
+    // int TrayAvailable(int station);
     bool CeilingRobotMoveToAssemblyStation(int station);
     bool CeilingRobotMovetoTarget();
     bool CeilingRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf, bool avoid_collisions);
