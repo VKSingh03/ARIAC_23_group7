@@ -165,7 +165,7 @@ public:
             std::bind(&CompetitorControlSystem::as4_state_cb, this, std::placeholders::_1));
 
         // Initialize service clients 
-        // quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
+        quality_checker_ = this->create_client<ariac_msgs::srv::PerformQualityCheck>("/ariac/perform_quality_check");
         pre_assembly_poses_getter_ = this->create_client<ariac_msgs::srv::GetPreAssemblyPoses>("/ariac/get_pre_assembly_poses");
         floor_robot_tool_changer_ = this->create_client<ariac_msgs::srv::ChangeGripper>("/ariac/floor_robot_change_gripper");
         floor_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/floor_robot_enable_gripper");
@@ -207,7 +207,7 @@ public:
     //Kitting Task Functions: 
     bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no, std::string order_id );
     bool MoveAGV(uint8_t agv, uint8_t destination);
-    bool FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
+    bool FloorRobotPickBinPart(std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
     bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
     void FloorRobotSendHome();
     bool FloorRobotPickandPlaceTray(int tray_id, int agv_no);
@@ -245,6 +245,10 @@ private:
     bool FloorRobotMovetoTarget();
     bool FloorRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf);
     void FloorRobotWaitForAttach(double timeout);
+
+    // Agility Challanges 
+    bool CheckFaultyPart(std::string order_id, int quadrant);
+    bool ThrowFaultyPartInBin();
 
     // Subscribers: 
     // Subscriber to read competition state READY
@@ -372,7 +376,7 @@ private:
     trajectory_processing::TimeOptimalTrajectoryGeneration totg_;
 
     // ARIAC Services
-    // rclcpp::Client<ariac_msgs::srv::PerformQualityCheck>::SharedPtr quality_checker_;
+    rclcpp::Client<ariac_msgs::srv::PerformQualityCheck>::SharedPtr quality_checker_;
     rclcpp::Client<ariac_msgs::srv::GetPreAssemblyPoses>::SharedPtr pre_assembly_poses_getter_;
     rclcpp::Client<ariac_msgs::srv::ChangeGripper>::SharedPtr floor_robot_tool_changer_;
     rclcpp::Client<ariac_msgs::srv::VacuumGripperControl>::SharedPtr floor_robot_gripper_enable_;
@@ -390,6 +394,7 @@ private:
     ariac_msgs::msg::Part floor_robot_attached_part_;
     ariac_msgs::msg::VacuumGripperState ceiling_gripper_state_;
     ariac_msgs::msg::Part ceiling_robot_attached_part_;
+    bool faulty_part_discarded_flag{false}; 
 
     // Variable to store position of first priority order in the vector
     int first_priority_order{0};
@@ -431,10 +436,10 @@ private:
 
     // Data structure to store kitting task plan // (type,color), bin 
     std::map<uint8_t, std::pair<std::pair<uint8_t, uint8_t>, uint8_t>> kitting_part_details = {
-    {1 , std::make_pair(std::make_pair(0, 0), NULL)}, 
-    {2 , std::make_pair(std::make_pair(0, 0), NULL)}, 
-    {3 , std::make_pair(std::make_pair(0, 0), NULL)}, 
-    {4 , std::make_pair(std::make_pair(0, 0), NULL)}};
+    {1 , std::make_pair(std::make_pair(0, 0), 0)}, 
+    {2 , std::make_pair(std::make_pair(0, 0), 0)}, 
+    {3 , std::make_pair(std::make_pair(0, 0), 0)}, 
+    {4 , std::make_pair(std::make_pair(0, 0), 0)}};
 
     // Data Structure to store Assembly task
     std::map<uint8_t, std::map<uint8_t, std::pair<uint8_t, uint8_t>>> assembly_part_details = {
@@ -508,6 +513,16 @@ private:
         {"floor_elbow_joint", 2.13},
         {"floor_wrist_1_joint", -2.76},
         {"floor_wrist_2_joint", -1.51},
+        {"floor_wrist_3_joint", 0.0}
+    };
+
+    std::map<std::string, double> floor_waste_bin = {
+        {"linear_actuator_joint", 0.0},
+        {"floor_shoulder_pan_joint", 0},
+        {"floor_shoulder_lift_joint", -0.88},
+        {"floor_elbow_joint", 1.70},
+        {"floor_wrist_1_joint", -2.4},
+        {"floor_wrist_2_joint", -1.6},
         {"floor_wrist_3_joint", 0.0}
     };
 

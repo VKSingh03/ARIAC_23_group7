@@ -811,7 +811,7 @@ bool CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::
     return true;
 }
 
-bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
+bool CompetitorControlSystem::FloorRobotPickBinPart( std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
     uint8_t part_bin_location = part.second;
@@ -910,10 +910,67 @@ bool CompetitorControlSystem::FloorRobotPickBinPart(uint8_t quadrant, std::pair<
     return true;
 }
 
-bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no, std::string order_id ){
+bool CompetitorControlSystem::CheckFaultyPart(std::string order_id, int quadrant){
+    // Checking quality
+    auto request = std::make_shared<ariac_msgs::srv::PerformQualityCheck::Request>();
+    request->order_id = order_id;
+    auto result = quality_checker_->async_send_request(request);
+    result.wait();
+    RCLCPP_INFO_STREAM(get_logger(),"Checking Faulty part for quadrant'"<< (std::to_string(quadrant))<<"'");
+    RCLCPP_INFO_STREAM(get_logger()," Performing Quality Check: " << order_id);
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    RCLCPP_INFO_STREAM(get_logger()," Result: " << result.get()->valid_id);
+    RCLCPP_INFO_STREAM(get_logger()," Result: " << result.get()->all_passed);
+    RCLCPP_INFO_STREAM(get_logger()," Result: " << result.get()->incorrect_tray);
+    RCLCPP_INFO_STREAM(get_logger()," Result All Passed Q1: " << result.get()->quadrant1.all_passed);
+    RCLCPP_INFO_STREAM(get_logger()," Result Faulty Part Q1: " << result.get()->quadrant1.faulty_part);
+    RCLCPP_INFO_STREAM(get_logger()," Result Faulty Part Q2: " << result.get()->quadrant2.faulty_part);
+    RCLCPP_INFO_STREAM(get_logger()," Result Faulty Part Q3: " << result.get()->quadrant3.faulty_part);
+    RCLCPP_INFO_STREAM(get_logger()," Result Faulty Part Q4: " << result.get()->quadrant4.faulty_part);
+
+    switch (quadrant)
+    {
+    case 1:
+        return (result.get()->quadrant1.faulty_part);
+
+    case 2:
+        return (result.get()->quadrant2.faulty_part);
+
+    case 3:
+        return (result.get()->quadrant3.faulty_part);
+
+    case 4:
+        return (result.get()->quadrant4.faulty_part);
+
+    default:
+        RCLCPP_INFO_STREAM(get_logger(),"Unable to get faulty part result, returning false for quadrant '"<< (std::to_string(quadrant))<<"'");
+        return false;
+
+    }
+}
+
+bool CompetitorControlSystem::ThrowFaultyPartInBin(){
+    
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    auto current_pose = floor_robot_.getCurrentPose().pose;
+    current_pose.position.z += 0.2;
+
+    waypoints.push_back(current_pose);
+    FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+
+    floor_robot_.setJointValueTarget(floor_waste_bin);
+    FloorRobotMovetoTarget();
+    FloorRobotSetGripperState(false);
+
+    return true; 
+}
+
+bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part, int tray_id, uint8_t agv_no, std::string order_id ){
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
-    uint8_t part_location = part.second;
+    // uint8_t part_location = part.second;
     RCLCPP_INFO_STREAM(get_logger()," Move robot to the AGV number : '"<< (std::to_string(agv_no))<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     
@@ -943,12 +1000,28 @@ bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
     waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
         part_drop_pose.position.z + 0.3, SetRobotOrientation(0)));
 
+    // waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
+    //     part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type] + drop_height_,
+    //     SetRobotOrientation(0)));
+    
     waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
-        part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type] + drop_height_,
+        part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type]- 0.0248,
         SetRobotOrientation(0)));
     
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
 
+    // Check if the current part is faulty 
+    bool faulty_part = CheckFaultyPart(order_id, quadrant);
+    RCLCPP_INFO_STREAM(get_logger(),"Result of faulty part test: '"<< (std::to_string(faulty_part))<<"'");
+    if (faulty_part){
+        ThrowFaultyPartInBin();
+        faulty_part_discarded_flag = true; 
+        std::string part_name = part_colors_[floor_robot_attached_part_.color] + "_" + part_types_[floor_robot_attached_part_.type];
+        floor_robot_.detachObject(part_name);
+        return false;
+    }
+    // faulty_part_discarded_flag = false; 
+    
     // Drop part in quadrant
     FloorRobotSetGripperState(false);
 
@@ -982,7 +1055,7 @@ std::array<double,3> CompetitorControlSystem::BinAvailableLocation(int location)
         std::vector<int> not_available_indices_right;
         auto right_bins_parts_current = right_bins_parts_;
         for(auto i: right_bins_parts_current){
-            for(auto j=0; j < right_bin.size(); j++){  
+            for(auto j=0; j < int(right_bin.size()); j++){  
                 if (std::sqrt( std::pow(right_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(right_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.05){
                     not_available_indices_right.push_back(j);
                     break;
@@ -1002,7 +1075,7 @@ std::array<double,3> CompetitorControlSystem::BinAvailableLocation(int location)
         std::vector<int> not_available_indices_left;
         auto left_bins_parts_current = left_bins_parts_;
         for(auto i: left_bins_parts_current){
-            for(auto j=0; j < left_bin.size(); j++){  
+            for(auto j=0; j < int(left_bin.size()); j++){  
                 if (std::sqrt( std::pow(left_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(left_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.05){
                     not_available_indices_left.push_back(j);
                     break;
@@ -1030,7 +1103,7 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
     }
     geometry_msgs::msg::Pose part_pose;
     geometry_msgs::msg::Pose part_pose_stl;
-    bool found_part = false;
+    // bool found_part = false;
 
     uint8_t part_type;
     uint8_t part_color;
@@ -1576,9 +1649,14 @@ bool CompetitorControlSystem::CompleteKittingTask(OrderData current_order_)
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
 
     for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
-        if(kit_part->second.second != NULL){
-            FloorRobotPickBinPart(kit_part->first, kit_part->second);
+        if(kit_part->second.second != 0){
+            FloorRobotPickBinPart(kit_part->second);
             FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
+            if (faulty_part_discarded_flag == true){
+                FloorRobotPickBinPart(kit_part->second);
+                FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
+                faulty_part_discarded_flag = false; 
+            }
         }
     }
     MoveAGV(task.agv_number, task.destination);
@@ -1716,8 +1794,8 @@ bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 
     for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
-        if(kit_part->second.second != NULL){
-            FloorRobotPickBinPart(kit_part->first, kit_part->second);
+        if(kit_part->second.second != 0){
+            FloorRobotPickBinPart(kit_part->second);
             FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv, current_order_.id);
         }
     }

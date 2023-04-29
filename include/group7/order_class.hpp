@@ -1,3 +1,11 @@
+/**
+ *  @brief     This file contains the class definition of Order Class.
+ *  @author    Ishan Tamrakar
+ *  @author    Krishna Hundekari
+ *  @author    Pranav Shinde
+ *  @author    Vineet Singh
+ *  @version   1.0
+ */
 #pragma once
 
 #include <ariac_msgs/msg/competition_state.hpp>
@@ -8,16 +16,19 @@
 #include <vector>
 #include <string>
 #include <stdint.h>
-
-// Class to store information of part for combined task
+/**
+ * @brief This Class includes the information of part for combined task
+ *  
+ * 
+ */
 class CombinedPartInfo
 {
 public:
-    std::uint8_t color; // the color of the part
-    std::uint8_t type; // the type of the part
-    std::int32_t header_stamp_sec; // the seconds component of the timestamp 
-    std::int32_t header_stamp_nanos; // the nanoseconds component of the timestamp 
-    std::string frame_id; // the reference frame ID for the assembled pose of the part
+    std::uint8_t color; /** the color of the part*/
+    std::uint8_t type; //! the type of the part
+    std::int32_t header_stamp_sec; // !the seconds component of the timestamp 
+    std::int32_t header_stamp_nanos; /*!< the nanoseconds component of the timestamp */
+    std::string frame_id; //<! the reference frame ID for the assembled pose of the part
     _Float64 position_x; // the x-coordinate of the position of the part
     _Float64 position_y; // the y-coordinate of the position of the part
     _Float64 position_z; // the z-coordinate of the position of the part
@@ -30,12 +41,21 @@ public:
     _Float64 install_direction_z; // the z-coordinate of the installation direction of the part
 
     // default constructor that initializes all member variables to 0 or an empty string                                                        
+    /**
+     * @brief Constructor for a new Combined Part Info object.
+     * Default constructor that initializes all member variables to 0 or an empty string 
+     */
     CombinedPartInfo() : color(0), type(0), header_stamp_sec(0), header_stamp_nanos(0), frame_id(""), position_x(0), 
     position_y(0), position_z(0), orientation_x(0), orientation_y(0), orientation_z(0), orientation_w(0), 
     install_direction_x(0), install_direction_y(0), install_direction_z(0) {}
 
-    // constructor that initializes the member variables based on the order message 
-    //and the index of the part in the combined task
+    // 
+    /**
+     * @brief Constructor that initializes the member variables based on the order message and the index of the part in the combined task
+     * 
+     * @param which_part 
+     * @param msg 
+     */
     CombinedPartInfo(int which_part, const ariac_msgs::msg ::Order::SharedPtr msg)
     {
         // initialize the variables based on the information in the order message
@@ -58,6 +78,10 @@ public:
 };
 
 // a class that represents information about a part used in an assembly task
+/**
+ * @brief class that represents information about a part used in an assembly task
+ * 
+ */
 class AssemblyPartInfo
 {
 public:
@@ -77,13 +101,21 @@ public:
     _Float64 install_direction_y; // the y-coordinate of the installation direction of the part
     _Float64 install_direction_z; // the z-coordinate of the installation direction of the part 
 
-   // default constructor that initializes all member variables to 0 or an empty string 
+   /**
+    * @brief default constructor that initializes all member variables to 0 or an empty string 
+    * 
+    */
     AssemblyPartInfo() : color(0), type(0), header_stamp_sec(0), header_stamp_nanos(0), frame_id(""), 
     position_x(0), position_y(0), position_z(0), orientation_x(0), orientation_y(0), orientation_z(0), 
     orientation_w(0), install_direction_x(0), install_direction_y(0), install_direction_z(0) {}
 
-    // constructor that initializes the member variables based on the order message 
-    // and the index of the part in the assembly task
+    // 
+    /**
+     * @brief constructor that initializes the member variables based on the order message and the index of the part in the assembly task
+     * 
+     * @param which_part 
+     * @param msg 
+     */
     AssemblyPartInfo(int which_part, const ariac_msgs::msg ::Order::SharedPtr msg)
     {
         // initialize the variables based on the information in the order message
@@ -105,7 +137,11 @@ public:
     }
 };
 
-// a class that represents information about a part used in an kiting task
+// 
+/**
+ * @brief a class that represents information about a part used in an kiting task
+ * 
+ */
 class KittingPartInfo
 {
 public:
@@ -127,7 +163,11 @@ public:
     }
 };
 
-// This class defines the information about the Combined parts in an order.
+
+/**
+ * @brief This class defines the information about the Combined parts in an order.
+ * 
+ */
 class CombinedPartsInfo
 {
 public:
@@ -135,10 +175,20 @@ public:
     std::vector<CombinedPartInfo> parts_; // A vector containing information about each assembly part
     CombinedPartInfo combined_part; // A default instance ofAssemblyPartInfo class
 
-    // Default constructor
+    
+
+    /**
+     * @brief Default constructor
+     * 
+     */
     CombinedPartsInfo() : number_of_parts(0), parts_() {}
 
-    // Constructor with the shared pointer to the order message as input
+    // 
+    /**
+     * @brief Constructor with the shared pointer to the order message as input
+     * 
+     * //!@param msg 
+     */
     CombinedPartsInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
     {
         // Get the vector of parts from the order message
@@ -163,19 +213,29 @@ public:
     }
 };
 
-// This class defines the information about the assembly parts in an order.
+/**
+ * @brief This class defines the information about the assembly parts in an order.
+ * 
+ */
 class AssemblyPartsInfo
 {
 public:
     int number_of_parts; // The number of assembly parts in the order
     std::vector<AssemblyPartInfo> parts_; // A vector containing information about each assembly part
     AssemblyPartInfo assembly_part; // A default instance ofAssemblyPartInfo class
-
-    // Default constructor initializes number_of_parts to 0 and creates an empty vector of AssemblyPartInfo objects.
+    
+    /**
+     * @brief Default constructor initializes number_of_parts to 0 and creates an empty vector of AssemblyPartInfo objects.
+     * 
+     */
     AssemblyPartsInfo() : number_of_parts(0), parts_() {}
 
-    // Constructor that takes an Order message pointer as an argument 
-    // and initializes AssemblyPartsInfo using the information from the message.
+    // 
+    /**
+     * @brief Constructor that takes an Order message pointer as an argument and initializes AssemblyPartsInfo using the information from the message.
+     * 
+     * @param msg Order message pointer
+     */
     AssemblyPartsInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
     {
         // Get the vector of assembly task parts from the message.
@@ -203,7 +263,11 @@ public:
 };
 
 
-// This class defines the information about the kitting parts in an order.
+
+/**
+ * @brief This class defines the information about the kitting parts in an order.
+ * 
+ */
 class KittingPartsInfo
 {
 public:
@@ -239,7 +303,10 @@ public:
     }
 };
 
-//Class represents combined task information in an order
+/**
+ * @brief Class represents combined task information in an order
+ * 
+ */
 class CombinedInfo
 {
 public:
@@ -259,7 +326,10 @@ public:
     }
 };
 
-//Class represents assembly information in an order
+/**
+ * @brief Class represents assembly information in an order
+ * 
+ */
 class AssemblyInfo
 {
 public:
@@ -284,7 +354,10 @@ public:
 };
 
 
-//Class represents kitting information in an order
+/**
+ * @brief Class represents kitting information in an order
+ * 
+ */
 class KittingInfo
 {
 public:
@@ -306,8 +379,10 @@ public:
         this->kitting_parts = KittingPartsInfo(msg);
     }
 };
-
-// class definition for OrderData
+/**
+ * @brief This is the Class Definition for OrderData
+ * 
+ */
 class OrderData
 {
 public:
@@ -319,13 +394,17 @@ public:
     AssemblyInfo assembly; // Information about the assembly task (if received)
     CombinedInfo combined; // Information about the combined task (if received)
 
-    // Constructor to initialise the class attributes
+    /**
+     * @brief Constructor to initialise the class attributes
+     * 
+     * @param msg 
+     */
     OrderData(const std::shared_ptr<ariac_msgs::msg ::Order> msg)
     {
         this->id = msg->id;   // Set order ID
         this->type = msg->type; // Set order type
         this->priority = msg->priority; // Set order priority
-        this->kitting = KittingInfo(msg);   // Create KittingInfo object from message and assign to kitting member variable
+        this->kitting = KittingInfo(msg);   //! Create KittingInfo object from message and assign to kitting member variable
         this->assembly = AssemblyInfo(msg);  // Create AssemblyInfo object from message and assign to assembly member variable
         this->combined = CombinedInfo(msg);  // Create CombinedInfo object from message and assign to combined member variable
     
