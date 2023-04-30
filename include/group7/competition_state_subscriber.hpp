@@ -1,3 +1,13 @@
+/**
+ *  @brief     This file contains the class definition of CompetitorControlSystem class which reads 
+ * competition state, receives and submits orders, and performs required tasks based on the orders.
+ *  @author    Ishan Tamrakar
+ *  @author    Krishna Hundekari
+ *  @author    Pranav Shinde
+ *  @author    Vineet Singh
+ *  @version   1.0
+ *  @date      30-04-2023
+ */
 #pragma once
 
 #include <rclcpp/qos.hpp>
@@ -54,12 +64,21 @@
 
 # include "order_class.hpp"
 
-// Class to read competition state, receive and submit orders
+/**
+ *
+ * @class CompetitorControlSystem
+ * @brief Class to read competition state, receive and submit orders
+ *
+ */
 class CompetitorControlSystem:public rclcpp::Node 
 {
 
 public:
-    // Constructor for class CompetitiorControlSystem
+    /**
+     * @brief Constructor for a new Competitor Control System object
+     * @param node_name is the name of the ROS2 node
+     *
+     */
     CompetitorControlSystem(std::string node_name):Node(node_name),
     floor_robot_(std::shared_ptr<rclcpp::Node>(std::move(this)), "floor_robot"),
     ceiling_robot_(std::shared_ptr<rclcpp::Node>(std::move(this)), "ceiling_robot"),    
@@ -172,67 +191,269 @@ public:
         ceiling_robot_gripper_enable_ = this->create_client<ariac_msgs::srv::VacuumGripperControl>("/ariac/ceiling_robot_enable_gripper");
     }
 
-    // Functions to complete specific tasks 
-    // Function to get quantity of a particular part in the Bin
+    /**
+     * @brief method to get quantity of a particular part in the Bin
+     *
+     * @param bin the bin number key
+     * @param part part the part type key
+     * @param color color the part color key
+     * @return returns an integer with the corresponding bin, parts, color
+     */
     int bin_get_quantity_for_this_part(uint8_t bin, uint8_t part, uint8_t color);
-    // Function to update quantity for the given part on bin
+    /**
+     * @brief method to update quantity for the given part on bin
+     *
+     * @param bin the bin number key
+     * @param part the part type key
+     * @param color the part color key
+     * @param value Value that is updated in the corresponding bin, part, color
+     */
     void bin_set_quantity_for_this_part(uint8_t bin, uint8_t part, uint8_t color, int value);
-    // Function to update quantity for the given part on Conveyor
+    /**
+     * @brief method to update quantity for the given part on Conveyor
+     *
+     * @param part the part type key
+     * @param color the part color key
+     * @param value the new quantity value
+     */
     void conveyor_set_quantity_for_this_part(uint8_t part, uint8_t color, int value);
-    // Function for completing orders
+    /**
+     * @brief method for completing orders
+     *
+     */
     bool CompleteOrders();
-    // Function for completing Kitting task
+    /**
+     * @brief method for completing Kitting task
+     *
+     * @param task object that contains all the information for the Kitting Task
+     * @return returns true if the Kitting task was successfully completed
+     */
     bool CompleteKittingTask(OrderData current_order_);
-    // Function for completing Assembly task
+    /**
+     * @brief method for completing Assembly task
+     *
+     * @param task object that contains all the information for the Assembly Task
+     * @return returns true if the Assembly task was successfully completed
+     */
     bool CompleteAssemblyTask(OrderData current_order_);
-    // Function for completing Combined task
+    /**
+     * @brief method for completing Assembly task
+     *
+     * @param task object that contains all the information for the Assembly Task
+     * @return returns true if the Assembly task was successfully completed
+     */
     bool CompleteCombinedTask(OrderData current_order_);
-    // Function to complete Insufficient Parts Challange
+    /**
+     * @brief method to complete Insufficient Parts Challange
+     *
+     * @param current_order_ object that contains details of the current order
+     * @return returns true if there were insufficient parts
+     */
     bool InsufficientPartsChallange(OrderData current_order_);
-    // Function to Start the Competition
+    /***
+     * @brief Method to start the Competition
+     *
+    */
     bool StartCompetition();
-    // Function to Submit Orders
+    /**
+     * @brief method to Submit Orders
+     *
+     * @param order_id the ID of the order to submit
+     * @return true if the service call to the client was successful
+     * @return false if the service call to the client was not succesful
+     */
     bool SubmitOrder(std::string order_id);
-    // Function for Ending Competition
+    /**
+     * @brief method for Ending Competition and display on the console that the competition has ended
+     *
+     */
     void EndCompetition();
-    // Function to convert Part type to string
+    /**
+     * @brief method to convert Part type to corresponding string
+     *
+     * @param part_type the part type as uint8 value as stored in the order data object
+     * @return std::string output of the corresponding part type as encoded in the ARIAC Order message
+     */
     std::string PartTypetoString(uint8_t part_type);
-    // Function to convert Part colour to string
+    /**
+     * @brief method to convert Part colour to corresponding string
+     *
+     * @param part_color the part color as uint8 value as stored in the order data object
+     * @return std::string output of the corresponding part color as encoded in the ARIAC Order message
+     */
     std::string PartColortoString(uint8_t part_color);
-    // Function to convert Destination to string
+    /**
+     * @brief method to convert Destination to corresponding string
+     *
+     * @param dest the destination as uint8 value as stored in the order data object
+     * @return std::string output of the corresponding destination as encoded in the ARIAC Order message
+     */
     std::string DestinationtoString(uint8_t dest);
-    // Function to conver Station to string
+    /**
+     * @brief method to conver Station to corresponding string
+     *
+     * @param station the station as uint8 value as stored in the order data object
+     * @return std::string output of the corresponding station as encoded in the ARIAC Order message
+     */
     std::string StationtoString(uint8_t station);
     
-    //Kitting Task Functions: 
+    /**
+     * @brief This method moves floor robot to AGV and places the part on kitting tray
+     * @details This has been left blank intentionally
+     * @param quadrant the quadrant on the kitting tray where the part is going to be placed
+     * @param part the part that is going to be placed on the kitting tray
+     * @param tray_id the kitting tray id that will be used
+     * @param agv_no the avg number where the floor robot will place the part
+     * @return true, if the placing of the part was succesful
+     * @return false, if the gripper is not attached
+     */ 
     bool FloorRobotPlacePartOnKitTray(uint8_t quadrant, std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part,int tray_id, uint8_t agv_no, std::string order_id );
+    /**
+     * @brief This method will move the AGV to the final destination
+     *
+     * @param agv the AGV number that is supposed to be moved
+     * @param destination the final destination where the AGV is supposed to go to
+     * @return true, if the service call to the client to MoveAGV was succesful
+     * @return false, uf the service call to the client to MoveAGV was unsuccesful
+     */
     bool MoveAGV(uint8_t agv, uint8_t destination);
+    /**
+     * @brief method to check the bins for required part and picks up the required part
+     * @details This part has been left blank intentionally
+     * @param part the part that is supposed to be picked up 
+     * @return true, if the required part was picked up
+     * @return false, if the part was not found in the bins
+     */
     bool FloorRobotPickBinPart(std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part);
+    /**
+     * @brief method to change the gripper type using a service call 
+     *
+     * @param station the kitting station where the gripper change is to be performed
+     * @param gripper_type the name of the desired gripper type 
+     * @return true, if the gripper was changed succesfully 
+     * @return false, if the robot moves to an undesired location or if the service call to the client was unsuccesful
+     */
     bool FloorRobotChangeGripper(std::string station, std::string gripper_type);
+    /**
+     * @brief method to move floor robot to home position
+     *
+     */
     void FloorRobotSendHome();
+    /**
+     * @brief method to make the floor robot find the required tray, pick and place it on the required AGV
+     * @details Add details here
+     * @param tray_id the tray that is required for the current order
+     * @param agv_no the AGV number that is required to be used 
+     * @return true, if the required tray was succesfully placed on the AGV
+     * @return false, if the required tray was not found 
+     */
     bool FloorRobotPickandPlaceTray(int tray_id, int agv_no);
+    /**
+     * @brief method to move floor robot to pick parts from conveyor 
+     * @details diy later
+     * @return true, if the part was succesfully picked up 
+     * @return false, if unsuccesful
+     */
     bool FloorRobotConveyorPartspickup(int location);
+    /**
+     * @brief method to activate the gripper
+     * @details Check later for return values
+     * @param enable the boolean that stores whether a gripper is on or off
+     * @return true, if the gripper is activated
+     * @return false, if the gripper was already enabled 
+     */
     bool FloorRobotSetGripperState(bool enable);
+    /**
+     * @brief method to lock the tray onto the AGV
+     *
+     * @param agv_num the AGV number that is supposed to be locked
+     * @return true, if the service call to the client to lock agv was succesful
+     * @return false, if the service call to the client to lock agv was unsuccesful 
+     */
     bool LockAGVTray(int agv_num);
+    /**
+     * @brief method to check available location for bins to place conveyor pickedup parts
+     * @param location conveyor pickup location of part. (1 or 2)
+     * @return x, y, z coordinate of available location
+     */
     std::array<double,3> BinAvailableLocation(int location);
     
-    // Assembly Task Functions: 
-    void CeilingRobotSendHome();
-    // void CeilingRobotPickTrayPart(AssemblyInfo task);
-    // void CeilingRobotPickTrayPart(CombinedInfo task);
-    // void CeilingRobotPlacePartInInsert();
+    /**
+     * @brief method to move ceiling robot to home position
+     * 
+     */
+    void CeilingRobotSendHome(); 
 
-    //Combined Task Functioms: 
+    /**
+     * @brief method to update the map that contains details of the required parts for the task
+     * 
+     * @param task object that contains all the information for the Combined Task
+     */
     void CombinedTaskAssemblyUpdate(CombinedInfo task);
     // int AGVAvailable(int station);
     // int TrayAvailable(int station);
+    /**
+     * @brief Takes station information and accordingly assigns joint value target to implement 
+     * function to move ceiling robot to desired target.
+     * 
+     * @param station 
+     * @return true if move action successful
+     * @return false if invalid station
+     */
     bool CeilingRobotMoveToAssemblyStation(int station);
+    /**
+     * @brief Function to move ceiling robot to desired location by accessing the Joint value target.
+     */
     bool CeilingRobotMovetoTarget();
+    /**
+     * @brief // ! todo
+     * 
+     * @param waypoints 
+     * @param vsf 
+     * @param asf 
+     * @param avoid_collisions 
+     * @return true 
+     * @return false 
+     */
     bool CeilingRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf, bool avoid_collisions);
+    /**
+     * @brief method to move a given part using ceiling robot
+     * 
+     * @param part the part that needs to be moved by the ceiling robot
+     * @return true and carries out further steps
+     * @return false 
+     */
     bool CeilingRobotPickAGVPart(ariac_msgs::msg::PartPose part);
+    /**
+     * @brief verifies whether the ceiling robot has a part attached to it and the part is of correct description as per 
+     * the order and then inserts it into the desired location at kitting station
+     * 
+     * @param station provides info about required assembly station
+     * @param part details of the part to be assembled
+     * @return true 
+     * @return false 
+     */
     bool CeilingRobotAssemblePart(int station, ariac_msgs::msg::AssemblyPart part);
+    /**
+     * @brief method to provide a time delay for the part to be attached
+     * 
+     * @param timeout time delay to be provided
+     */
     void CeilingRobotWaitForAttach(double timeout);
+    /**
+     * @brief method to activate the vacuum gripper of the robot.
+     * 
+     * @param enable 
+     */
     bool CeilingRobotSetGripperState(bool enable);
+    /**
+     * @brief //! todo
+     * 
+     * @param station station no. at which action is carried out
+     * @param part details of the part to be assembled
+     * @return true 
+     * @return false 
+     */
     bool CeilingRobotWaitForAssemble(int station, ariac_msgs::msg::AssemblyPart part);
 
 private:
@@ -241,15 +462,52 @@ private:
     rclcpp::CallbackGroup::SharedPtr client_cb_group_;
     rclcpp::CallbackGroup::SharedPtr topic_cb_group_;
 
-    // Robot Move Functions
+    /**
+       * @brief Move floor robot to a given target
+       * @see FloorRobotMovetoTarget()
+       * @return bool value - success of failure
+       */
     bool FloorRobotMovetoTarget();
+    /**
+       * @brief Move floor robot in cartesian path
+       * @see FloorRobotMoveCartesian()
+       * @param waypoints set of waypoints that the robot should follow 
+       * @param vsf the second argument.
+       * @param asf the second argument.
+       * @return bool value - success of failure
+       */
     bool FloorRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf);
+    /**
+       * @brief Move floor robot to attach part to its gripper
+       * @see FloorRobotWaitForAttach()
+       * @param timeout to stop the function if part not attached in this time. 
+       */
     void FloorRobotWaitForAttach(double timeout);
+    /**
+       * @brief floor robot to attach pump to its gripper as pump behaves differently as compared to other parts
+       * @see FloorRobotWaitForAttachPump()
+       */
     void FloorRobotWaitForAttachPump(double timeout);
 
-    // Agility Challanges 
+    /**
+       * @brief Calls service calls to check faulty part. 
+       * @see CheckFaultyPart()
+       * @param waypoints set of waypoints that the robot should follow 
+       * @param vsf the second argument.
+       * @param asf the second argument.
+       * @return bool value - success of failure
+       */
     bool CheckFaultyPart(std::string order_id, int quadrant);
+    /**
+       * @brief Move floor robot in cartesian path
+       * @see FloorRobotMoveCartesian()
+       * @param waypoints set of waypoints that the robot should follow 
+       * @param vsf the second argument.
+       * @param asf the second argument.
+       * @return bool value - success of failure
+       */
     bool ThrowFaultyPartInBin();
+
     std::vector<std::vector<ariac_msgs::msg::PartPose>> assembly_agv_part_poses; 
 
     // Subscribers: 
@@ -389,8 +647,8 @@ private:
     unsigned int competition_state_;
     // Vector to store received orders based on priority
     std::vector<OrderData> orders_;
-    // Variable to store current order
-    // OrderData current_order_(nullptr);
+    std::vector<OrderData> priority_orders_;
+    std::vector<OrderData> incomplete_orders_;
     // Gripper State
     ariac_msgs::msg::VacuumGripperState floor_gripper_state_;
     ariac_msgs::msg::Part floor_robot_attached_part_;
@@ -398,17 +656,6 @@ private:
     ariac_msgs::msg::Part ceiling_robot_attached_part_;
     bool faulty_part_discarded_flag{false}; 
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-std::vector<OrderData> priority_orders_;
-std::vector<OrderData> incomplete_orders_;
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    // Variable to store position of first priority order in the vector
-    int first_priority_order{0};
-    // Variable to keep of total orders received and pending. 
-    int total_orders{0};
     // To store bin read status
     int bin_read{0};
     // To store conveyor read status
