@@ -245,10 +245,12 @@ private:
     bool FloorRobotMovetoTarget();
     bool FloorRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf);
     void FloorRobotWaitForAttach(double timeout);
+    void FloorRobotWaitForAttachFaultyPart(double timeout);
 
     // Agility Challanges 
     bool CheckFaultyPart(std::string order_id, int quadrant);
     bool ThrowFaultyPartInBin();
+    std::vector<std::vector<ariac_msgs::msg::PartPose>> assembly_agv_part_poses; 
 
     // Subscribers: 
     // Subscriber to read competition state READY
@@ -395,6 +397,13 @@ private:
     ariac_msgs::msg::VacuumGripperState ceiling_gripper_state_;
     ariac_msgs::msg::Part ceiling_robot_attached_part_;
     bool faulty_part_discarded_flag{false}; 
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+std::vector<OrderData> priority_orders_;
+std::vector<OrderData> incomplete_orders_;
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // Variable to store position of first priority order in the vector
     int first_priority_order{0};
@@ -601,6 +610,14 @@ private:
         {ariac_msgs::msg::Part::PUMP, 0.12},
         {ariac_msgs::msg::Part::REGULATOR, 0.07},
         {ariac_msgs::msg::Part::SENSOR, 0.07}
+    };
+
+    // Part drop heights
+    std::map<int, double> part_drop_heights_ = {
+        {ariac_msgs::msg::Part::BATTERY, 0.0001},
+        {ariac_msgs::msg::Part::PUMP, 0.002},
+        {ariac_msgs::msg::Part::REGULATOR, 0.0001},
+        {ariac_msgs::msg::Part::SENSOR, 0.002}
     };
 
     // Quadrant Offsets

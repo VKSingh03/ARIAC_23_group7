@@ -393,6 +393,30 @@ public:
     KittingInfo kitting; // Information about the kitting task (if received)
     AssemblyInfo assembly; // Information about the assembly task (if received)
     CombinedInfo combined; // Information about the combined task (if received)
+    
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    bool importance_flag{false};
+    bool abandoned_{false};
+    bool agv_part_poses_extracted{false}; 
+    bool combined_tray_placed_on_agv{false}; 
+    int combined_agv_selected = -1; 
+    int combined_tray_selected = 0; 
+
+
+    std::map<uint8_t, std::pair<std::pair<uint8_t, uint8_t>, uint8_t>> kitting_part_details_orderdata = {
+    {1 , std::make_pair(std::make_pair(0, 0), 0)}, 
+    {2 , std::make_pair(std::make_pair(0, 0), 0)}, 
+    {3 , std::make_pair(std::make_pair(0, 0), 0)}, 
+    {4 , std::make_pair(std::make_pair(0, 0), 0)}};
+
+    //  std::map<uint8_t, std::map<uint8_t, std::pair<uint8_t, uint8_t>>> assembly_part_details_orderdata = {
+    // {1, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
+    // {2, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
+    // {3, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
+    // {4, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}}};
+
+    std::array<int, 4> status_of_assembly{{1,1,1,1}};
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     /**
      * @brief Constructor to initialise the class attributes

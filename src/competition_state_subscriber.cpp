@@ -226,14 +226,14 @@ void CompetitorControlSystem::order_callback(const ariac_msgs::msg::Order::Share
     OrderData order(msg); 
     //Storing order based on priority
     if(order.priority == true){
-        orders_.insert(orders_.begin(),order);
-        first_priority_order+=1;
-        total_orders +=1; 
+        priority_orders_.push_back(order);
+        // first_priority_order+=1;
+        // total_orders +=1; 
         RCLCPP_INFO(this->get_logger()," Added priority order '%s' to open orders", order.id.c_str());
     }
     else{
         orders_.push_back(order);
-        total_orders += 1;
+        // total_orders += 1;
         RCLCPP_INFO(this->get_logger()," Added normal order '%s' to open orders", order.id.c_str());
     }
 }
@@ -318,30 +318,32 @@ bool CompetitorControlSystem::SubmitOrder(std::string order_id)
 }
 
 void CompetitorControlSystem::EndCompetition(){
-    if (competition_state_ == ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE){
-        if (total_orders == 0){
-            // Service client to End competition.
-            RCLCPP_INFO(this->get_logger(),"Ending Competition");
-            rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
-            client = this->create_client<std_srvs::srv::Trigger>("/ariac/end_competition");
-            auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
-            auto result =client->async_send_request(request);
-            if(result.get()->success)
-                RCLCPP_INFO(this->get_logger(),"Competition Ended");
-        }
-    }
+    // Service client to End competition.
+    RCLCPP_INFO(this->get_logger(),"Ending Competition");
+    rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr client;
+    client = this->create_client<std_srvs::srv::Trigger>("/ariac/end_competition");
+    auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+    auto result =client->async_send_request(request);
+    if(result.get()->success)
+        RCLCPP_INFO(this->get_logger(),"Competition Ended");
 }
 
 bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order_){
     
     if (current_order_.type == ariac_msgs::msg::Order::KITTING){
+        
+        kitting_part_details[1] = std::make_pair(std::make_pair(0,0),0);
+        kitting_part_details[2] = std::make_pair(std::make_pair(0,0),0);
+        kitting_part_details[3] = std::make_pair(std::make_pair(0,0),0);
+        kitting_part_details[4] = std::make_pair(std::make_pair(0,0),0);
+
         RCLCPP_INFO_STREAM(get_logger(),"Checking insufficient parts challange for Kitting task.");
         int insuf_part_kitting=4;
         for (auto j = 0; j < current_order_.kitting.kitting_parts.number_of_parts; j ++){
             for (int i =0; i<8; i++){
                 if (bin_dictionary[i][current_order_.kitting.kitting_parts.parts_[j].type][current_order_.kitting.kitting_parts.parts_[j].color] > 0 && insuf_part_kitting!= 0){
                     kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first = std::make_pair(current_order_.kitting.kitting_parts.parts_[j].type,current_order_.kitting.kitting_parts.parts_[j].color);
-                    kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = i;
+                    kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = 1;
                     bin_set_quantity_for_this_part(i, current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
                 }
@@ -349,7 +351,7 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
             if (insuf_part_kitting != 0){
                 if (conveyor_dictionary[current_order_.kitting.kitting_parts.parts_[j].type][current_order_.kitting.kitting_parts.parts_[j].color] >=1){
                     kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].first = std::make_pair(current_order_.kitting.kitting_parts.parts_[j].type,current_order_.kitting.kitting_parts.parts_[j].color);
-                    kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = 9;
+                    kitting_part_details[current_order_.kitting.kitting_parts.parts_[j].quadrant].second = 1;
                     conveyor_set_quantity_for_this_part(current_order_.kitting.kitting_parts.parts_[j].type, current_order_.kitting.kitting_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
                 }         
@@ -403,7 +405,7 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
             for (int i =0; i<8; i++){
                 if (bin_dictionary[i][current_order_.combined.combined_parts.parts_[j].type][current_order_.combined.combined_parts.parts_[j].color] > 0 && insuf_part_kitting!= 0){
                     kitting_part_details[insuf_part_kitting].first = std::make_pair(current_order_.combined.combined_parts.parts_[j].type,current_order_.combined.combined_parts.parts_[j].color);
-                    kitting_part_details[insuf_part_kitting].second = i;
+                    kitting_part_details[insuf_part_kitting].second = 1;
                     bin_set_quantity_for_this_part(i, current_order_.combined.combined_parts.parts_[j].type, current_order_.combined.combined_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
                     }
@@ -411,7 +413,7 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
             if (insuf_part_kitting != 0){
                 if (conveyor_dictionary[current_order_.combined.combined_parts.parts_[j].type][current_order_.combined.combined_parts.parts_[j].color] >=1){
                     kitting_part_details[insuf_part_kitting].first = std::make_pair(current_order_.combined.combined_parts.parts_[j].type,current_order_.combined.combined_parts.parts_[j].color);
-                    kitting_part_details[insuf_part_kitting].second = 9;
+                    kitting_part_details[insuf_part_kitting].second = 1;
                     conveyor_set_quantity_for_this_part(current_order_.combined.combined_parts.parts_[j].type, current_order_.combined.combined_parts.parts_[j].color, -1);
                     insuf_part_kitting --;
                 }
@@ -597,6 +599,30 @@ void CompetitorControlSystem::FloorRobotWaitForAttach(double timeout){
         }
     }
 }
+
+// void CompetitorControlSystem::FloorRobotWaitForAttachFaultyPart(double timeout){
+//     // Wait for part to be attached
+//     rclcpp::Time start = now();
+//     std::vector<geometry_msgs::msg::Pose> waypoints;
+//     geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose;
+
+//     while (!floor_gripper_state_.attached) {
+//         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Waiting for gripper attach");
+
+//         waypoints.clear();
+//         starting_pose.position.z -= 0.001;
+//         waypoints.push_back(starting_pose);
+
+//         FloorRobotMoveCartesian(waypoints, 0.1, 0.1);
+
+//         usleep(200);
+
+//         if (now() - start > rclcpp::Duration::from_seconds(timeout)){
+//         RCLCPP_ERROR(get_logger(), "Unable to pick up object");
+//         return;
+//         }
+//     }
+// }
 
 bool CompetitorControlSystem::FloorRobotSetGripperState(bool enable)
 {
@@ -814,10 +840,10 @@ bool CompetitorControlSystem::FloorRobotChangeGripper(std::string station, std::
 bool CompetitorControlSystem::FloorRobotPickBinPart( std::pair<std::pair<uint8_t, uint8_t>, uint8_t> part){
     uint8_t part_type = part.first.first;
     uint8_t part_color = part.first.second;
-    uint8_t part_bin_location = part.second;
+    // uint8_t part_bin_location = part.second;
 
-    RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin : '"<< (std::to_string(part_bin_location))<<"'");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // RCLCPP_INFO_STREAM(get_logger()," Reading Bins status, Part found in Bin : '"<< (std::to_string(part_bin_location))<<"'");
+    // RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     // Check if part is in one of the bins
     geometry_msgs::msg::Pose part_pose;
     bool found_part = false;
@@ -871,8 +897,8 @@ bool CompetitorControlSystem::FloorRobotPickBinPart( std::pair<std::pair<uint8_t
     }
 
     RCLCPP_INFO_STREAM(get_logger()," Attempting to pick a '" <<PartColortoString(part_color) << "' '" << PartTypetoString(part_type)<<"'");
-    RCLCPP_INFO_STREAM(get_logger(),"-----------------------------------ros2 launch ariac_moveit_config ariac_robots_moveit.launch.py-----------------------------------------------");
-    RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_bin_location)<<"'");
+    // RCLCPP_INFO_STREAM(get_logger(),"-----------------------------------ros2 launch ariac_moveit_config ariac_robots_moveit.launch.py-----------------------------------------------");
+    // RCLCPP_INFO_STREAM(get_logger()," Pickup part from the Bin Id: '"<< std::to_string(part_bin_location)<<"'");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 
     floor_robot_.setJointValueTarget("linear_actuator_joint", rail_positions_[bin_side]);
@@ -929,7 +955,7 @@ bool CompetitorControlSystem::CheckFaultyPart(std::string order_id, int quadrant
     RCLCPP_INFO_STREAM(get_logger()," Result Faulty Part Q2: " << result.get()->quadrant2.faulty_part);
     RCLCPP_INFO_STREAM(get_logger()," Result Faulty Part Q3: " << result.get()->quadrant3.faulty_part);
     RCLCPP_INFO_STREAM(get_logger()," Result Faulty Part Q4: " << result.get()->quadrant4.faulty_part);
-
+    usleep(2500); 
     switch (quadrant)
     {
     case 1:
@@ -952,11 +978,17 @@ bool CompetitorControlSystem::CheckFaultyPart(std::string order_id, int quadrant
 }
 
 bool CompetitorControlSystem::ThrowFaultyPartInBin(){
-    
     std::vector<geometry_msgs::msg::Pose> waypoints;
     auto current_pose = floor_robot_.getCurrentPose().pose;
-    current_pose.position.z += 0.2;
 
+    // FloorRobotSetGripperState(true);
+    // while (floor_gripper_state_.attached){}
+    // while (!floor_gripper_state_.attached){
+    //     RCLCPP_INFO_STREAM(get_logger(),"Moviing to attach Faulty part'");
+    //     FloorRobotWaitForAttachFaultyPart(2.0);
+    // }
+
+    current_pose.position.z += 0.2;
     waypoints.push_back(current_pose);
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
 
@@ -1000,31 +1032,52 @@ bool CompetitorControlSystem::FloorRobotPlacePartOnKitTray(uint8_t quadrant, std
     waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
         part_drop_pose.position.z + 0.3, SetRobotOrientation(0)));
 
-    // waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
-    //     part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type] + drop_height_,
-    //     SetRobotOrientation(0)));
-    
     waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
-        part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type]- 0.0248,
+        part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type],
         SetRobotOrientation(0)));
     
+    // waypoints.push_back(BuildPose(part_drop_pose.position.x, part_drop_pose.position.y,
+    //     part_drop_pose.position.z + part_heights_[floor_robot_attached_part_.type]- 0.0248,
+    //     SetRobotOrientation(0)));
+    
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+    waypoints.clear(); 
+
+    bool faulty_part{false};
+    bool movement{true}; 
+    while(movement && !faulty_part && !faulty_part_discarded_flag){
+        RCLCPP_INFO_STREAM(get_logger(),"Moving down to test faulty part");
+        geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose; 
+        starting_pose.position.z -= 0.001;
+        waypoints.push_back(starting_pose);
+        movement = FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
+        waypoints.clear(); 
+        if(movement)
+            faulty_part = CheckFaultyPart(order_id, quadrant);
+    }
+
+    // FloorRobotSetGripperState(false);
+
+    // std::string part_name = part_colors_[floor_robot_attached_part_.color] + "_" + part_types_[floor_robot_attached_part_.type];
+    // floor_robot_.detachObject(part_name);
 
     // Check if the current part is faulty 
-    bool faulty_part = CheckFaultyPart(order_id, quadrant);
+     
+    
+
     RCLCPP_INFO_STREAM(get_logger(),"Result of faulty part test: '"<< (std::to_string(faulty_part))<<"'");
     if (faulty_part){
+        // while (!floor_gripper_state_.enabled){
+        //     RCLCPP_INFO_STREAM(get_logger(),"Floor robot gripper enabled ");
+        // }
         ThrowFaultyPartInBin();
         faulty_part_discarded_flag = true; 
         std::string part_name = part_colors_[floor_robot_attached_part_.color] + "_" + part_types_[floor_robot_attached_part_.type];
         floor_robot_.detachObject(part_name);
         return false;
     }
-    // faulty_part_discarded_flag = false; 
-    
-    // Drop part in quadrant
-    FloorRobotSetGripperState(false);
 
+    FloorRobotSetGripperState(false);
     std::string part_name = part_colors_[floor_robot_attached_part_.color] + 
         "_" + part_types_[floor_robot_attached_part_.type];
     floor_robot_.detachObject(part_name);
@@ -1239,10 +1292,10 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
 }
 
 bool CompetitorControlSystem::MoveAGV(uint8_t agv, uint8_t destination){
-    RCLCPP_INFO_STREAM(get_logger()," Locking Tray on AGV : '"<< std::to_string(agv)<<"'");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
-    RCLCPP_INFO_STREAM(get_logger()," Moving AGV '"<< std::to_string(agv)<<"' to '"<< DestinationtoString(destination)<<"'");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // RCLCPP_INFO_STREAM(get_logger()," Locking Tray on AGV : '"<< std::to_string(agv)<<"'");
+    // RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+    // RCLCPP_INFO_STREAM(get_logger()," Moving AGV '"<< std::to_string(agv)<<"' to '"<< DestinationtoString(destination)<<"'");
+    // RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
 
     rclcpp::Client<ariac_msgs::srv::MoveAGV>::SharedPtr client;
 
@@ -1647,20 +1700,65 @@ bool CompetitorControlSystem::CompleteKittingTask(OrderData current_order_)
 {   
     KittingInfo task = current_order_.kitting;
     FloorRobotPickandPlaceTray(task.tray_id, task.agv_number);
+    if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+                    current_order_.kitting_part_details_orderdata = kitting_part_details;                   
+                    current_order_.abandoned_ = true;
+                    incomplete_orders_.push_back(current_order_);
+                    return current_order_.abandoned_;
+    }
 
-    for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
-        if(kit_part->second.second != 0){
-            FloorRobotPickBinPart(kit_part->second);
-            FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
-            if (faulty_part_discarded_flag == true){
+    if(current_order_.abandoned_){
+        for (auto kit_part = current_order_.kitting_part_details_orderdata.begin(); kit_part != current_order_.kitting_part_details_orderdata.end(); kit_part++){
+            if(kit_part->second.second == 1 ){
+                    RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(kit_part->second.second)<<"'");
                 FloorRobotPickBinPart(kit_part->second);
                 FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
-                faulty_part_discarded_flag = false; 
+                if (faulty_part_discarded_flag == true){
+                    FloorRobotPickBinPart(kit_part->second);
+                    FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
+                    faulty_part_discarded_flag = false; 
+                }
+                kit_part->second.second = 2;
+
+                if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+                    current_order_.abandoned_ = true;
+                    incomplete_orders_.push_back(current_order_);
+                    return current_order_.abandoned_;
+                }
+                else{
+                    continue;
+                }
+            }
+        }
+        current_order_.abandoned_ = false; 
+    }
+    else{
+        for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
+            if(kit_part->second.second != 0 || kit_part->second.second != 2){
+                FloorRobotPickBinPart(kit_part->second);
+                FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
+                if (faulty_part_discarded_flag == true){
+                    FloorRobotPickBinPart(kit_part->second);
+                    FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second,task.tray_id, task.agv_number, current_order_.id);
+                    faulty_part_discarded_flag = false; 
+                }
+                kit_part->second.second = 2;
+
+                if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+                    current_order_.kitting_part_details_orderdata = kitting_part_details;
+                    current_order_.abandoned_ = true;
+                    incomplete_orders_.push_back(current_order_);
+                    return current_order_.abandoned_;
+                }
+                else{
+                    continue;
+                }
+
             }
         }
     }
     MoveAGV(task.agv_number, task.destination);
-    return true;
+    return current_order_.abandoned_;
 }
 
 bool CompetitorControlSystem::CompleteAssemblyTask(OrderData current_order_)
@@ -1668,23 +1766,44 @@ bool CompetitorControlSystem::CompleteAssemblyTask(OrderData current_order_)
     RCLCPP_INFO_STREAM(get_logger()," Executing Assembly Task ");
     RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
     AssemblyInfo task = current_order_.assembly;
+    
+    if(!current_order_.agv_part_poses_extracted){
+        for ( int j = 0; j < int(task.agv_numbers.size()); j++){
+            LockAGVTray(task.agv_numbers[j]);
+            int destination;
+            if ((task.station == ariac_msgs::msg::AssemblyTask::AS1) || (task.station == ariac_msgs::msg::AssemblyTask::AS3)) {
+                destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_FRONT;
+            } else {
+                destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_BACK;
+            }
 
-    for ( int j = 0; j < int(task.agv_numbers.size()); j++){
-        LockAGVTray(task.agv_numbers[j]);
-        int destination;
-        if ((task.station == ariac_msgs::msg::AssemblyTask::AS1) || (task.station == ariac_msgs::msg::AssemblyTask::AS3)) {
-            destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_FRONT;
-        } else {
-            destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_BACK;
+            MoveAGV(task.agv_numbers[j], destination);
+        }
+        // CeilingRobotSendHome();
+        // CeilingRobotPickTrayPart(task);
+
+        if (priority_orders_.size() != 0 && !current_order_.importance_flag){ 
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[1].second)<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[2].second)<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[3].second)<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[4].second)<<"'");                  
+            current_order_.abandoned_ = true;
+            incomplete_orders_.push_back(current_order_);
+            return current_order_.abandoned_;
         }
 
-        MoveAGV(task.agv_numbers[j], destination);
-        // MoveAGVAsComb(task.agv_numbers[j], task.station);
-    }
-    // CeilingRobotSendHome();
-    // CeilingRobotPickTrayPart(task);
+        CeilingRobotMoveToAssemblyStation(task.station);
 
-    CeilingRobotMoveToAssemblyStation(task.station);
+        if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[1].second)<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[2].second)<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[3].second)<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.kitting_part_details_orderdata[4].second)<<"'");                  
+            current_order_.abandoned_ = true;
+            incomplete_orders_.push_back(current_order_);
+            return current_order_.abandoned_;
+        }
+    }
 
     // Get Assembly Poses
     auto request = std::make_shared<ariac_msgs::srv::GetPreAssemblyPoses::Request>();
@@ -1693,65 +1812,167 @@ bool CompetitorControlSystem::CompleteAssemblyTask(OrderData current_order_)
     
     result.wait();
 
-    std::vector<ariac_msgs::msg::PartPose> agv_part_poses; 
-    if (result.get()->valid_id) {
-        agv_part_poses = result.get()->parts;
+    std::vector<ariac_msgs::msg::PartPose> agv_part_poses;
 
-        if (agv_part_poses.size() == 0) {
-        RCLCPP_WARN(get_logger(), "No part poses recieved");
-        return false;
+    if(!current_order_.agv_part_poses_extracted){
+        if (result.get()->valid_id) {
+            agv_part_poses = result.get()->parts;
+            current_order_.agv_part_poses_extracted = true;
+            if (agv_part_poses.size() == 0) {
+            RCLCPP_WARN(get_logger(), "No part poses recieved");
+            return false;
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "Not a valid order ID");
+            return false;
         }
-    } else {
-        RCLCPP_WARN(get_logger(), "Not a valid order ID");
-        return false;
+    }
+    else{
+        agv_part_poses = assembly_agv_part_poses.front();
+        assembly_agv_part_poses.erase(assembly_agv_part_poses.begin());
+
     }
 
-    for (auto const &part_to_assemble : task.assembly_parts.parts_) {
-        // Check if matching part exists in agv_parts
-        bool part_exists = false;
-        ariac_msgs::msg::PartPose part_to_pick;
-        part_to_pick.part.color = part_to_assemble.color;
-        part_to_pick.part.type = part_to_assemble.type;
-        for (auto const &agv_part: agv_part_poses) {
-            if (agv_part.part.type == part_to_assemble.type && agv_part.part.color == part_to_assemble.color) {
-                part_exists = true;
-                part_to_pick.pose = agv_part.pose;
-                break;
+    if(current_order_.abandoned_){
+        int i = 0; 
+        for (auto const &part_to_assemble : task.assembly_parts.parts_) {
+            if(current_order_.status_of_assembly.at(i)==1){
+                // Check if matching part exists in agv_parts
+                bool part_exists = false;
+                ariac_msgs::msg::PartPose part_to_pick;
+                part_to_pick.part.color = part_to_assemble.color;
+                part_to_pick.part.type = part_to_assemble.type;
+                for (auto const &agv_part: agv_part_poses) {
+                    if (agv_part.part.type == part_to_assemble.type && agv_part.part.color == part_to_assemble.color) {
+                        part_exists = true;
+                        part_to_pick.pose = agv_part.pose;
+                        break;
+                    }
+                    // if (priority_orders_.size() != 0 ){
+                        
+                    // }
+                }
+                if (!part_exists) {
+                RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.type << 
+                    " and color: " << part_to_assemble.color << " not found on tray");
+                continue;
+                }
+
+                // Pick up part
+                CeilingRobotPickAGVPart(part_to_pick);
+
+                CeilingRobotMoveToAssemblyStation(task.station);
+                ariac_msgs::msg::AssemblyPart part;
+                
+                part.part.type = part_to_assemble.type;
+                part.part.color = part_to_assemble.color;
+                part.assembled_pose.header.stamp.sec = part_to_assemble.header_stamp_sec;
+                part.assembled_pose.header.stamp.nanosec = part_to_assemble.header_stamp_nanos;
+                part.assembled_pose.header.frame_id = part_to_assemble.frame_id;
+                part.assembled_pose.pose.position.x = part_to_assemble.position_x;
+                part.assembled_pose.pose.position.y = part_to_assemble.position_y;
+                part.assembled_pose.pose.position.z = part_to_assemble.position_z;
+                part.assembled_pose.pose.orientation.x = part_to_assemble.orientation_x;
+                part.assembled_pose.pose.orientation.y = part_to_assemble.orientation_y;
+                part.assembled_pose.pose.orientation.z = part_to_assemble.orientation_z;
+                part.assembled_pose.pose.orientation.w = part_to_assemble.orientation_w;
+                part.install_direction.x = part_to_assemble.install_direction_x;
+                part.install_direction.y = part_to_assemble.install_direction_y;
+                part.install_direction.z = part_to_assemble.install_direction_z;
+                // Assemble Part to insert
+                CeilingRobotAssemblePart(task.station, part);
+
+                CeilingRobotMoveToAssemblyStation(task.station);
+
+                current_order_.status_of_assembly.at(i) = 2;
+
+                if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+                // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[0])<<"'");
+                // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[1])<<"'");
+                // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[2])<<"'");
+                // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[3])<<"'");                  
+                assembly_agv_part_poses.push_back(agv_part_poses); 
+                current_order_.abandoned_ = true;
+                incomplete_orders_.push_back(current_order_);
+                return current_order_.abandoned_;
+                }
+                i++; 
+            }
+            else{
+                i++;
             }
         }
-        if (!part_exists) {
-        RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.type << 
-            " and color: " << part_to_assemble.color << " not found on tray");
-        continue;
-        }
-
-        // Pick up part
-        CeilingRobotPickAGVPart(part_to_pick);
-
-        CeilingRobotMoveToAssemblyStation(task.station);
-        ariac_msgs::msg::AssemblyPart part;
-        
-        part.part.type = part_to_assemble.type;
-        part.part.color = part_to_assemble.color;
-        part.assembled_pose.header.stamp.sec = part_to_assemble.header_stamp_sec;
-        part.assembled_pose.header.stamp.nanosec = part_to_assemble.header_stamp_nanos;
-        part.assembled_pose.header.frame_id = part_to_assemble.frame_id;
-        part.assembled_pose.pose.position.x = part_to_assemble.position_x;
-        part.assembled_pose.pose.position.y = part_to_assemble.position_y;
-        part.assembled_pose.pose.position.z = part_to_assemble.position_z;
-        part.assembled_pose.pose.orientation.x = part_to_assemble.orientation_x;
-        part.assembled_pose.pose.orientation.y = part_to_assemble.orientation_y;
-        part.assembled_pose.pose.orientation.z = part_to_assemble.orientation_z;
-        part.assembled_pose.pose.orientation.w = part_to_assemble.orientation_w;
-        part.install_direction.x = part_to_assemble.install_direction_x;
-        part.install_direction.y = part_to_assemble.install_direction_y;
-        part.install_direction.z = part_to_assemble.install_direction_z;
-        // Assemble Part to insert
-        CeilingRobotAssemblePart(task.station, part);
-
-        CeilingRobotMoveToAssemblyStation(task.station);
+        current_order_.abandoned_=false; 
     }
-    return true;
+    else{
+        int i = 0;
+        for (auto const &part_to_assemble : task.assembly_parts.parts_) {
+            // Check if matching part exists in agv_parts
+            bool part_exists = false;
+            ariac_msgs::msg::PartPose part_to_pick;
+            part_to_pick.part.color = part_to_assemble.color;
+            part_to_pick.part.type = part_to_assemble.type;
+            for (auto const &agv_part: agv_part_poses) {
+                if (agv_part.part.type == part_to_assemble.type && agv_part.part.color == part_to_assemble.color) {
+                    part_exists = true;
+                    part_to_pick.pose = agv_part.pose;
+                    break;
+                }
+                if (priority_orders_.size() != 0 ){
+                    
+                }
+            }
+            if (!part_exists) {
+            RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.type << 
+                " and color: " << part_to_assemble.color << " not found on tray");
+            continue;
+            }
+
+            // Pick up part
+            CeilingRobotPickAGVPart(part_to_pick);
+
+            CeilingRobotMoveToAssemblyStation(task.station);
+            ariac_msgs::msg::AssemblyPart part;
+            
+            part.part.type = part_to_assemble.type;
+            part.part.color = part_to_assemble.color;
+            part.assembled_pose.header.stamp.sec = part_to_assemble.header_stamp_sec;
+            part.assembled_pose.header.stamp.nanosec = part_to_assemble.header_stamp_nanos;
+            part.assembled_pose.header.frame_id = part_to_assemble.frame_id;
+            part.assembled_pose.pose.position.x = part_to_assemble.position_x;
+            part.assembled_pose.pose.position.y = part_to_assemble.position_y;
+            part.assembled_pose.pose.position.z = part_to_assemble.position_z;
+            part.assembled_pose.pose.orientation.x = part_to_assemble.orientation_x;
+            part.assembled_pose.pose.orientation.y = part_to_assemble.orientation_y;
+            part.assembled_pose.pose.orientation.z = part_to_assemble.orientation_z;
+            part.assembled_pose.pose.orientation.w = part_to_assemble.orientation_w;
+            part.install_direction.x = part_to_assemble.install_direction_x;
+            part.install_direction.y = part_to_assemble.install_direction_y;
+            part.install_direction.z = part_to_assemble.install_direction_z;
+            // Assemble Part to insert
+            CeilingRobotAssemblePart(task.station, part);
+
+            CeilingRobotMoveToAssemblyStation(task.station);
+
+            current_order_.status_of_assembly.at(i) = 2;
+
+            if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+            
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[0])<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[1])<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[2])<<"'");
+            // RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(current_order_.status_of_assembly[3])<<"'");                  
+            assembly_agv_part_poses.push_back(agv_part_poses); 
+            current_order_.abandoned_ = true;
+            incomplete_orders_.push_back(current_order_);
+            return current_order_.abandoned_;
+                }
+
+            i++;
+                    
+        }
+    }
+    return current_order_.abandoned_;
 }
 
 bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
@@ -1761,55 +1982,149 @@ bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
     // int agv = AGVAvailable(task.station);
     // int tray = TrayAvailable(task.station);
     CombinedInfo task = current_order_.combined;
-    // Decide on a tray to use
-    int tray;
-    if (kts1_trays_.size() != 0) {
-        tray = kts1_trays_[0].id;
-    } else if (kts2_trays_.size() != 0) {
-        tray = kts2_trays_[0].id;
-    } else {
-        RCLCPP_ERROR(get_logger(), "No trays available.");
-        return false;
-    }
-
-    // Decide which AGV to use
     int agv;
-    if (task.station == ariac_msgs::msg::CombinedTask::AS1 or task.station == ariac_msgs::msg::CombinedTask::AS2) {
-        agv = 1;
-    } else {
-        agv = 4;
+    int tray{0};
+    if(!current_order_.combined_tray_placed_on_agv){
+        // Decide on a tray to use. Prefer tray.id 0 for Combined task s
+        bool found_tray{false}; 
+        for (auto tray1: kts1_trays_) {
+            if (tray1.id == tray) {
+                found_tray = true;
+                break;
+            }
+        }
+        // Check table 2
+        if (!found_tray) {
+            for (auto tray2: kts2_trays_) {
+                if (tray2.id == tray) {
+                    found_tray = true;
+                    break;
+                }
+            }
+        }
+        if (!found_tray){
+            if (kts1_trays_.size() != 0) {
+                tray = kts1_trays_[0].id;
+            } else if (kts2_trays_.size() != 0) {
+                tray = kts2_trays_[0].id;
+            } else {
+                RCLCPP_ERROR(get_logger(), "No trays available.");
+                return false;
+            }
+        }
+        current_order_.combined_tray_selected = tray; 
+
+        // Decide which AGV to use
+        if (task.station == ariac_msgs::msg::CombinedTask::AS1 or task.station == ariac_msgs::msg::CombinedTask::AS2) {
+            agv = 1;
+        } else {
+            agv = 4;
+        }
+        current_order_.combined_agv_selected = agv; 
+
+        MoveAGV(agv, ariac_msgs::srv::MoveAGV::Request::KITTING);
+        if(agv == 0){
+            RCLCPP_INFO_STREAM(get_logger()," No AGV available to complete order at station "<< StationtoString(task.station));
+            return false; 
+        }
+
+        RCLCPP_INFO_STREAM(get_logger()," Choosing AGV : '"<< std::to_string(agv) << "' and Tray ID: '"<< std::to_string(tray)<<"' for combined task");
+
+        FloorRobotSendHome();
+        FloorRobotPickandPlaceTray(tray, agv);
+        current_order_.combined_tray_placed_on_agv = true; 
+    }
+    else{
+        agv = current_order_.combined_agv_selected; 
+        tray = current_order_.combined_tray_selected; 
     }
 
-    MoveAGV(agv, ariac_msgs::srv::MoveAGV::Request::KITTING);
-    if(agv == 0){
-        RCLCPP_INFO_STREAM(get_logger()," No AGV available to complete order at station "<< StationtoString(task.station));
-        return false; 
+    if (priority_orders_.size() != 0 && !current_order_.importance_flag)
+    {   
+        if(!current_order_.abandoned_){
+            current_order_.kitting_part_details_orderdata = kitting_part_details;                   
+            current_order_.abandoned_ = true;
+            incomplete_orders_.push_back(current_order_);
+            return current_order_.abandoned_;
+        }
     }
 
-    RCLCPP_INFO_STREAM(get_logger()," Choosing AGV : '"<< std::to_string(agv) << "' and Tray ID: '"<< std::to_string(tray)<<"' for combined task");
+    if(current_order_.abandoned_){
+        for (auto kit_part = current_order_.kitting_part_details_orderdata.begin(); kit_part != current_order_.kitting_part_details_orderdata.end(); kit_part++){
+            if(kit_part->second.second == 1 ){
+                RCLCPP_INFO_STREAM(get_logger()," Using incomplete order_data'"<< std::to_string(kit_part->second.second)<<"'");
+                FloorRobotPickBinPart(kit_part->second);
+                FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv, current_order_.id);
+                if (faulty_part_discarded_flag == true){
+                    FloorRobotPickBinPart(kit_part->second);
+                    FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv, current_order_.id);
+                    faulty_part_discarded_flag = false; 
+                }
+                kit_part->second.second = 2;
 
-    FloorRobotSendHome();
-    FloorRobotPickandPlaceTray(tray, agv);
-    RCLCPP_INFO_STREAM(get_logger()," Changing gripper to Part Gripper ");
-    RCLCPP_INFO_STREAM(get_logger(),"----------------------------------------------------------------------------------");
+                if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+                    current_order_.abandoned_ = true;
+                    incomplete_orders_.push_back(current_order_);
+                    return current_order_.abandoned_;
+                }
+                else{
+                    continue;
+                }
+            }
+        }
+        // current_order_.abandoned_ = false; 
+    }
+    else{
+        for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
+            if(kit_part->second.second != 0 || kit_part->second.second != 2){
+                FloorRobotPickBinPart(kit_part->second);
+                FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv, current_order_.id);
+                if (faulty_part_discarded_flag == true){
+                    FloorRobotPickBinPart(kit_part->second);
+                    FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv, current_order_.id);
+                    faulty_part_discarded_flag = false; 
+                }
+                kit_part->second.second = 2;
+                
+                if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+                    current_order_.kitting_part_details_orderdata = kitting_part_details;
+                    current_order_.abandoned_ = true;
+                    incomplete_orders_.push_back(current_order_);
+                    return current_order_.abandoned_;
+                }
+                else{
+                    continue;
+                }
 
-    for (auto kit_part = kitting_part_details.begin(); kit_part != kitting_part_details.end(); kit_part++){
-        if(kit_part->second.second != 0){
-            FloorRobotPickBinPart(kit_part->second);
-            FloorRobotPlacePartOnKitTray(kit_part->first, kit_part->second, tray, agv, current_order_.id);
+            }
         }
     }
     
     int destination;
-    if (task.station == ariac_msgs::msg::CombinedTask::AS1 || task.station == ariac_msgs::msg::CombinedTask::AS3) {
-        destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_FRONT;
-    } else {
-        destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_BACK;
+    if(!current_order_.agv_part_poses_extracted){
+        if (task.station == ariac_msgs::msg::CombinedTask::AS1 || task.station == ariac_msgs::msg::CombinedTask::AS3) {
+            destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_FRONT;
+        }  
+        else {
+            destination = ariac_msgs::srv::MoveAGV::Request::ASSEMBLY_BACK;
+        }
+
+        MoveAGV(agv, destination);
+
+        if (priority_orders_.size() != 0 && !current_order_.importance_flag){ 
+            current_order_.abandoned_ = true;
+            incomplete_orders_.push_back(current_order_);
+            return current_order_.abandoned_;
+        }
+
+        CeilingRobotMoveToAssemblyStation(task.station);
+
+        if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+            current_order_.abandoned_ = true;
+            incomplete_orders_.push_back(current_order_);
+            return current_order_.abandoned_;
+        }
     }
-
-    MoveAGV(agv, destination);
-
-    CeilingRobotMoveToAssemblyStation(task.station);
 
     // Get Assembly Poses
     auto request = std::make_shared<ariac_msgs::srv::GetPreAssemblyPoses::Request>();
@@ -1819,68 +2134,152 @@ bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
     result.wait();
 
     std::vector<ariac_msgs::msg::PartPose> agv_part_poses; 
-    if (result.get()->valid_id) {
-        agv_part_poses = result.get()->parts;
-
-        if (agv_part_poses.size() == 0) {
-        RCLCPP_WARN(get_logger(), "No part poses recieved");
-        return false;
+    if(!current_order_.agv_part_poses_extracted){
+        if (result.get()->valid_id) {
+            agv_part_poses = result.get()->parts;
+            current_order_.agv_part_poses_extracted = true;
+            if (agv_part_poses.size() == 0) {
+            RCLCPP_WARN(get_logger(), "No part poses recieved");
+            return false;
+            }
+        } else {
+            RCLCPP_WARN(get_logger(), "Not a valid order ID");
+            return false;
         }
-    } else {
-        RCLCPP_WARN(get_logger(), "Not a valid order ID");
-        return false;
     }
-    
-    for (auto const &part_to_assemble : task.combined_parts.parts_) {
-        // Check if matching part exists in agv_parts
-        bool part_exists = false;
-        ariac_msgs::msg::PartPose part_to_pick;
-        part_to_pick.part.color = part_to_assemble.color;
-        part_to_pick.part.type = part_to_assemble.type;
-        for (auto const &agv_part: agv_part_poses) {
-            if (agv_part.part.type == part_to_assemble.type && agv_part.part.color == part_to_assemble.color) {
-                part_exists = true;
-                part_to_pick.pose = agv_part.pose;
-                break;
+    else{
+        agv_part_poses = assembly_agv_part_poses.front();
+        assembly_agv_part_poses.erase(assembly_agv_part_poses.begin());
+    }
+
+    if(current_order_.abandoned_){
+        int i = 0; 
+        for (auto const &part_to_assemble : task.combined_parts.parts_) {
+            if(current_order_.status_of_assembly.at(i)==1){
+                // Check if matching part exists in agv_parts
+                bool part_exists = false;
+                ariac_msgs::msg::PartPose part_to_pick;
+                part_to_pick.part.color = part_to_assemble.color;
+                part_to_pick.part.type = part_to_assemble.type;
+                for (auto const &agv_part: agv_part_poses) {
+                    if (agv_part.part.type == part_to_assemble.type && agv_part.part.color == part_to_assemble.color) {
+                        part_exists = true;
+                        part_to_pick.pose = agv_part.pose;
+                        break;
+                    }
+                }
+                if (!part_exists) {
+                RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.type << 
+                    " and color: " << part_to_assemble.color << " not found on tray");
+                continue;
+                }
+
+                // Pick up part
+                CeilingRobotPickAGVPart(part_to_pick);
+
+                CeilingRobotMoveToAssemblyStation(task.station);
+                ariac_msgs::msg::AssemblyPart part;
+                
+                part.part.type = part_to_assemble.type;
+                part.part.color = part_to_assemble.color;
+                part.assembled_pose.header.stamp.sec = part_to_assemble.header_stamp_sec;
+                part.assembled_pose.header.stamp.nanosec = part_to_assemble.header_stamp_nanos;
+                part.assembled_pose.header.frame_id = part_to_assemble.frame_id;
+                part.assembled_pose.pose.position.x = part_to_assemble.position_x;
+                part.assembled_pose.pose.position.y = part_to_assemble.position_y;
+                part.assembled_pose.pose.position.z = part_to_assemble.position_z;
+                part.assembled_pose.pose.orientation.x = part_to_assemble.orientation_x;
+                part.assembled_pose.pose.orientation.y = part_to_assemble.orientation_y;
+                part.assembled_pose.pose.orientation.z = part_to_assemble.orientation_z;
+                part.assembled_pose.pose.orientation.w = part_to_assemble.orientation_w;
+                part.install_direction.x = part_to_assemble.install_direction_x;
+                part.install_direction.y = part_to_assemble.install_direction_y;
+                part.install_direction.z = part_to_assemble.install_direction_z;
+                // Assemble Part to insert
+                CeilingRobotAssemblePart(task.station, part);
+
+                CeilingRobotMoveToAssemblyStation(task.station);
+
+                current_order_.status_of_assembly.at(i) = 2;
+
+                if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+                assembly_agv_part_poses.push_back(agv_part_poses); 
+                current_order_.abandoned_ = true;
+                incomplete_orders_.push_back(current_order_);
+                return current_order_.abandoned_;
+                }
+                i++; 
+            }
+            else{
+                i++;
             }
         }
-
-        if (!part_exists) {
-        RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.type << 
-            " and color: " << part_to_assemble.color << " not found on tray");
-        continue;
-        }
-
-        // Pick up part
-        CeilingRobotPickAGVPart(part_to_pick);
-
-        CeilingRobotMoveToAssemblyStation(task.station);
-        ariac_msgs::msg::AssemblyPart part;
-        
-        part.part.type = part_to_assemble.type;
-        part.part.color = part_to_assemble.color;
-        part.assembled_pose.header.stamp.sec = part_to_assemble.header_stamp_sec;
-        part.assembled_pose.header.stamp.nanosec = part_to_assemble.header_stamp_nanos;
-        part.assembled_pose.header.frame_id = part_to_assemble.frame_id;
-        part.assembled_pose.pose.position.x = part_to_assemble.position_x;
-        part.assembled_pose.pose.position.y = part_to_assemble.position_y;
-        part.assembled_pose.pose.position.z = part_to_assemble.position_z;
-        part.assembled_pose.pose.orientation.x = part_to_assemble.orientation_x;
-        part.assembled_pose.pose.orientation.y = part_to_assemble.orientation_y;
-        part.assembled_pose.pose.orientation.z = part_to_assemble.orientation_z;
-        part.assembled_pose.pose.orientation.w = part_to_assemble.orientation_w;
-        part.install_direction.x = part_to_assemble.install_direction_x;
-        part.install_direction.y = part_to_assemble.install_direction_y;
-        part.install_direction.z = part_to_assemble.install_direction_z;
-        
-        // Assemble Part to insert
-        CeilingRobotAssemblePart(task.station, part);
-
-        CeilingRobotMoveToAssemblyStation(task.station);
-        
+        current_order_.abandoned_=false; 
     }
+    else{
+        int i = 0;
+        for (auto const &part_to_assemble : task.combined_parts.parts_) {
+            // Check if matching part exists in agv_parts
+            bool part_exists = false;
+            ariac_msgs::msg::PartPose part_to_pick;
+            part_to_pick.part.color = part_to_assemble.color;
+            part_to_pick.part.type = part_to_assemble.type;
+            for (auto const &agv_part: agv_part_poses) {
+                if (agv_part.part.type == part_to_assemble.type && agv_part.part.color == part_to_assemble.color) {
+                    part_exists = true;
+                    part_to_pick.pose = agv_part.pose;
+                    break;
+                }
+                if (priority_orders_.size() != 0 ){
+                    
+                }
+            }
+            if (!part_exists) {
+            RCLCPP_WARN_STREAM(get_logger(), "Part with type: " << part_to_assemble.type << 
+                " and color: " << part_to_assemble.color << " not found on tray");
+            continue;
+            }
 
-    return true;
+            // Pick up part
+            CeilingRobotPickAGVPart(part_to_pick);
+
+            CeilingRobotMoveToAssemblyStation(task.station);
+            ariac_msgs::msg::AssemblyPart part;
+
+            part.part.type = part_to_assemble.type;
+            part.part.color = part_to_assemble.color;
+            part.assembled_pose.header.stamp.sec = part_to_assemble.header_stamp_sec;
+            part.assembled_pose.header.stamp.nanosec = part_to_assemble.header_stamp_nanos;
+            part.assembled_pose.header.frame_id = part_to_assemble.frame_id;
+            part.assembled_pose.pose.position.x = part_to_assemble.position_x;
+            part.assembled_pose.pose.position.y = part_to_assemble.position_y;
+            part.assembled_pose.pose.position.z = part_to_assemble.position_z;
+            part.assembled_pose.pose.orientation.x = part_to_assemble.orientation_x;
+            part.assembled_pose.pose.orientation.y = part_to_assemble.orientation_y;
+            part.assembled_pose.pose.orientation.z = part_to_assemble.orientation_z;
+            part.assembled_pose.pose.orientation.w = part_to_assemble.orientation_w;
+            part.install_direction.x = part_to_assemble.install_direction_x;
+            part.install_direction.y = part_to_assemble.install_direction_y;
+            part.install_direction.z = part_to_assemble.install_direction_z;
+            
+            // Assemble Part to insert
+            CeilingRobotAssemblePart(task.station, part);
+
+            CeilingRobotMoveToAssemblyStation(task.station);
+
+            current_order_.status_of_assembly.at(i) = 2;
+
+            if (priority_orders_.size() != 0 && !current_order_.importance_flag){
+            assembly_agv_part_poses.push_back(agv_part_poses); 
+            current_order_.abandoned_ = true;
+            incomplete_orders_.push_back(current_order_);
+            return current_order_.abandoned_;
+                }
+            i++;
+        }
+    }
+    return current_order_.abandoned_;
+
 }
 
 bool CompetitorControlSystem::CompleteOrders(){
@@ -1889,6 +2288,7 @@ bool CompetitorControlSystem::CompleteOrders(){
     while (bin_read == 0) {}
     while (conveyor_read == 0) {}
     bool success;
+    OrderData dummy_order = orders_.front(); 
     // conv_part_.reserve(10);
     while (true) {
         if (competition_state_ == ariac_msgs::msg::CompetitionState::ENDED) {
@@ -1896,17 +2296,17 @@ bool CompetitorControlSystem::CompleteOrders(){
         break;
         }
 
-        if (orders_.size() == 0){
-        if (competition_state_  != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE) {
-            // wait for more orders
-            RCLCPP_INFO(get_logger(), " Waiting for orders...");
-            while (orders_.size() == 0) {}
+        if ((orders_.size() == 0) && (priority_orders_.size() == 0) && (incomplete_orders_.size()== 0)){
+            if (competition_state_  != ariac_msgs::msg::CompetitionState::ORDER_ANNOUNCEMENTS_DONE) {
+                // wait for more orders
+                RCLCPP_INFO(get_logger(), " Waiting for orders...");
+                while ((orders_.size() == 0) || (priority_orders_.size() == 0)) {}
             } 
-        else {
-            RCLCPP_INFO(get_logger(), " Completed all orders");
-            CompetitorControlSystem::EndCompetition();
-            success = true;
-            break;
+            else {
+                RCLCPP_INFO(get_logger(), " Completed all orders");
+                CompetitorControlSystem::EndCompetition();
+                success = true;
+                break;
             }
         }
 
@@ -1917,27 +2317,51 @@ bool CompetitorControlSystem::CompleteOrders(){
             }
         }
 
-        OrderData current_order_ = orders_.front(); 
-        orders_.erase(orders_.begin()); 
-        total_orders--; 
+        OrderData current_order_ = dummy_order;
+
+        if (priority_orders_.size() != 0){
+            current_order_ = priority_orders_.front();
+            // auto it = std::find(priority_orders_.begin(), priority_orders_.end(), current_order_);
+
+            priority_orders_.erase(priority_orders_.begin());
+            current_order_.importance_flag = true;
+            // total_orders--; 
+        }
+        else if (incomplete_orders_.size() != 0){
+            current_order_ = incomplete_orders_.front();
+            incomplete_orders_.erase(incomplete_orders_.begin());
+            current_order_.importance_flag = false;
+        }
+        else{
+            current_order_ = orders_.front();
+            orders_.erase(orders_.begin());
+            current_order_.importance_flag = false;
+            // total_orders--; 
+        }   
 
         // Insufficient Parts challange
         CompetitorControlSystem::InsufficientPartsChallange(current_order_);
 
         if (current_order_.type == ariac_msgs::msg::Order::KITTING) {
-            CompetitorControlSystem::CompleteKittingTask(current_order_);
+            current_order_.abandoned_ = CompetitorControlSystem::CompleteKittingTask(current_order_);
             // Submit order
+            if (!current_order_.abandoned_){
             CompetitorControlSystem::SubmitOrder(current_order_.id);
+            }
         } 
         else if (current_order_.type == ariac_msgs::msg::Order::ASSEMBLY) {
-            CompetitorControlSystem::CompleteAssemblyTask(current_order_);
+            current_order_.abandoned_ = CompetitorControlSystem::CompleteAssemblyTask(current_order_);
             // Submit order
+            if (!current_order_.abandoned_){
             CompetitorControlSystem::SubmitOrder(current_order_.id);
+            }
         }
         else if (current_order_.type == ariac_msgs::msg::Order::COMBINED) {
-            CompetitorControlSystem::CompleteCombinedTask(current_order_);
+            current_order_.abandoned_ = CompetitorControlSystem::CompleteCombinedTask(current_order_);
             // Submit order
+            if (!current_order_.abandoned_){
             CompetitorControlSystem::SubmitOrder(current_order_.id);
+            }
         }
     }
     return success;
@@ -1955,7 +2379,7 @@ int main(int argc, char *argv[]){
     competitor_control_system->StartCompetition();
 
     competitor_control_system->FloorRobotSendHome();
-    competitor_control_system->CeilingRobotSendHome();
+    // competitor_control_system->CeilingRobotSendHome();
 
     competitor_control_system->CompleteOrders();
     rclcpp::shutdown();
