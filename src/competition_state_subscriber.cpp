@@ -600,29 +600,58 @@ void CompetitorControlSystem::FloorRobotWaitForAttach(double timeout){
     }
 }
 
-// void CompetitorControlSystem::FloorRobotWaitForAttachFaultyPart(double timeout){
-//     // Wait for part to be attached
-//     rclcpp::Time start = now();
-//     std::vector<geometry_msgs::msg::Pose> waypoints;
+void CompetitorControlSystem::FloorRobotWaitForAttachPump(double timeout){
+    // Wait for part to be attached
+    
+    std::vector<geometry_msgs::msg::Pose> waypoints;
 //     geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose;
+        // RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Waiting for gripper attach");
+        bool movement{true};
+        
+        // while(movement && !floor_gripper_state_.attached){
+        //     geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose;
+        //     waypoints.clear();
+        //     starting_pose.position.z -= 0.001;
+        //     waypoints.push_back(starting_pose);
+        //     movement = FloorRobotMoveCartesian(waypoints, 0.1, 0.1);
+        // }
+        // movement = true; 
+        while(movement && !floor_gripper_state_.attached){
+            geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose;
+            waypoints.clear();
+            starting_pose.position.z -= 0.0001;
+            waypoints.push_back(starting_pose);
+            movement = FloorRobotMoveCartesian(waypoints, 0.1, 0.1);
+            RCLCPP_ERROR(get_logger(), "Inside while loop pickup");
+        }
+        // // movement = true; 
+        // while(!movement && !floor_gripper_state_.attached){
+        //     geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose;
+        //     waypoints.clear();
+        //     starting_pose.position.z -= 0.00025;
+        //     waypoints.push_back(starting_pose);
+        //     movement = !FloorRobotMoveCartesian(waypoints, 0.1, 0.1);
+        // }   
 
-//     while (!floor_gripper_state_.attached) {
-//         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Waiting for gripper attach");
+        rclcpp::Time start = now();
+        geometry_msgs::msg::Pose starting_pose = floor_robot_.getCurrentPose().pose;
+        while (!floor_gripper_state_.attached) {
+        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Waiting for gripper attach");
 
-//         waypoints.clear();
-//         starting_pose.position.z -= 0.001;
-//         waypoints.push_back(starting_pose);
+        waypoints.clear();
+        starting_pose.position.z -= 0.00025;
+        waypoints.push_back(starting_pose);
 
-//         FloorRobotMoveCartesian(waypoints, 0.1, 0.1);
+        FloorRobotMoveCartesian(waypoints, 0.1, 0.1);
 
-//         usleep(200);
+        usleep(200);
 
-//         if (now() - start > rclcpp::Duration::from_seconds(timeout)){
-//         RCLCPP_ERROR(get_logger(), "Unable to pick up object");
-//         return;
-//         }
-//     }
-// }
+        if (now() - start > rclcpp::Duration::from_seconds(timeout)){
+        RCLCPP_ERROR(get_logger(), "Unable to pick up object");
+        return;
+        }
+    }
+}
 
 bool CompetitorControlSystem::FloorRobotSetGripperState(bool enable)
 {
@@ -909,14 +938,22 @@ bool CompetitorControlSystem::FloorRobotPickBinPart( std::pair<std::pair<uint8_t
     waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
         part_pose.position.z + 0.5, SetRobotOrientation(part_rotation)));
     
-    waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
+    if(part_type == ariac_msgs::msg::Part::PUMP){
+        waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
+        part_pose.position.z + part_heights_[part_type]+ 0.0001, SetRobotOrientation(part_rotation)));
+    }
+    else{
+        waypoints.push_back(BuildPose(part_pose.position.x, part_pose.position.y, 
         part_pose.position.z + part_heights_[part_type] + pick_offset_, SetRobotOrientation(part_rotation)));
-    
+    }
     FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
 
     FloorRobotSetGripperState(true);
-
-    FloorRobotWaitForAttach(2.0);
+    if(part_type == ariac_msgs::msg::Part::PUMP){
+        FloorRobotWaitForAttachPump(2.0);
+    }
+    else
+        FloorRobotWaitForAttach(2.0);
 
     // Add part to planning scene
     std::string part_name = part_colors_[part_color] + "_" + part_types_[part_type];
@@ -2284,7 +2321,7 @@ bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
 
 bool CompetitorControlSystem::CompleteOrders(){
     // Wait for first order to be published and status of bins and conveyor is read.
-    while (orders_.size() == 0) {}
+    while ((orders_.size() == 0) && (priority_orders_.size() == 0)) {}
     while (bin_read == 0) {}
     while (conveyor_read == 0) {}
     bool success;

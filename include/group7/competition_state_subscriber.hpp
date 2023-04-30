@@ -245,7 +245,7 @@ private:
     bool FloorRobotMovetoTarget();
     bool FloorRobotMoveCartesian(std::vector<geometry_msgs::msg::Pose> waypoints, double vsf, double asf);
     void FloorRobotWaitForAttach(double timeout);
-    void FloorRobotWaitForAttachFaultyPart(double timeout);
+    void FloorRobotWaitForAttachPump(double timeout);
 
     // Agility Challanges 
     bool CheckFaultyPart(std::string order_id, int quadrant);
@@ -669,3 +669,5 @@ std::vector<OrderData> incomplete_orders_;
         {1.07651, -0.51498, -0.566}}} ;
 
 }; 
+
+ 
