@@ -1,13 +1,13 @@
 # README
 
 
-# ARIAC 2023 : ENPM663 RWA1
+# ARIAC 2023 : ENPM663
 
 ## Group Members: ##
 
 ### Vineet Singh (vsingh03@gmail.com)
-### Ishan Tamarkar (itamraka@umd.edu)
 ### Krishna Hundekari (krishnah@umd.edu) 
+### Ishan Tamarkar (itamraka@umd.edu)
 ### Pranav Shinde (pshinde@umd.edu)
 
 
@@ -33,6 +33,8 @@
 
         ros2 launch group7 group7.launch.py
 
+Output Video for RWA3 : https://youtu.be/J83ADXhgkKc
 
+Output Video for RWA4 : https://youtu.be/dmnHMJKD2i4
 
 

@@ -853,8 +853,19 @@ bool CompetitorControlSystem::FloorRobotPickBinPart( std::pair<std::pair<uint8_t
     bool found_part = false;
     std::string bin_side;
 
+    // Check right bins
+    for (auto part: right_bins_parts_) {
+        if (part.part.type == part_type && part.part.color == part_color) {
+            part_pose = MultiplyPose(right_bins_camera_pose_, part.pose);
+            found_part = true;
+            bin_side = "right_bins";
+            break;
+        }
+    } 
+
     // Check left bins
-    for (auto part: left_bins_parts_) {
+    if (!found_part) {
+        for (auto part: left_bins_parts_) {
         if (part.part.type == part_type && part.part.color == part_color) {
         part_pose = MultiplyPose(left_bins_camera_pose_, part.pose);
         found_part = true;
@@ -862,16 +873,7 @@ bool CompetitorControlSystem::FloorRobotPickBinPart( std::pair<std::pair<uint8_t
         break;
         }
     }
-    // Check right bins
-    if (!found_part) {
-        for (auto part: right_bins_parts_) {
-        if (part.part.type == part_type && part.part.color == part_color) {
-            part_pose = MultiplyPose(right_bins_camera_pose_, part.pose);
-            found_part = true;
-            bin_side = "right_bins";
-            break;
-        }
-        } 
+        
     }
     if (!found_part) {
         RCLCPP_ERROR(get_logger(), "Unable to locate part");
@@ -1097,7 +1099,7 @@ std::array<double,3> CompetitorControlSystem::BinAvailableLocation(int location)
         auto right_bins_parts_current = right_bins_parts_;
         for(auto i: right_bins_parts_current){
             for(auto j=0; j < int(right_bin.size()); j++){  
-                if (std::sqrt( std::pow(right_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(right_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.05){
+                if (std::sqrt( std::pow(right_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(right_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.08){
                     not_available_indices_right.push_back(j);
                     found = true; 
                     break;
@@ -1118,7 +1120,7 @@ std::array<double,3> CompetitorControlSystem::BinAvailableLocation(int location)
         auto left_bins_parts_current = left_bins_parts_;
         for(auto i: left_bins_parts_current){
             for(auto j=0; j < int(left_bin.size()); j++){  
-                if (std::sqrt( std::pow(left_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(left_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.05){
+                if (std::sqrt( std::pow(left_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(left_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.08){
                     not_available_indices_left.push_back(j);
                     found = true;
                     break;

@@ -1,10 +1,10 @@
 /**
  *  @brief     This file contains the class definition of Order Class.
- *  @author    Ishan Tamrakar
- *  @author    Krishna Hundekari
- *  @author    Pranav Shinde
  *  @author    Vineet Singh
- *  @version   1.0
+ *  @author    Krishna Hundekari
+ *  @author    Ishan Tamrakar
+ *  @author    Pranav Shinde
+ *  @version   4.0
  */
 #pragma once
 
@@ -24,23 +24,84 @@
 class CombinedPartInfo
 {
 public:
-    std::uint8_t color; /** the color of the part*/
-    std::uint8_t type; //! the type of the part
-    std::int32_t header_stamp_sec; // !the seconds component of the timestamp 
-    std::int32_t header_stamp_nanos; /*!< the nanoseconds component of the timestamp */
-    std::string frame_id; //<! the reference frame ID for the assembled pose of the part
-    _Float64 position_x; // the x-coordinate of the position of the part
-    _Float64 position_y; // the y-coordinate of the position of the part
-    _Float64 position_z; // the z-coordinate of the position of the part
-    _Float64 orientation_x; // the x-coordinate of the orientation of the part
-    _Float64 orientation_y; // the y-coordinate of the orientation of the part
-    _Float64 orientation_z; // the z-coordinate of the orientation of the part
-    _Float64 orientation_w; // the w-coordinate of the orientation of the part
-    _Float64 install_direction_x; // the x-coordinate of the installation direction of the part
-    _Float64 install_direction_y; // the y-coordinate of the installation direction of the part
-    _Float64 install_direction_z; // the z-coordinate of the installation direction of the part
 
-    // default constructor that initializes all member variables to 0 or an empty string                                                        
+    /**
+     * @brief The color of the part.
+     */
+    std::uint8_t color;
+
+    /**
+     * @brief The type of the part.
+     *       
+     */
+    std::uint8_t type;
+
+    /**
+     * @brief The seconds component of the timestamp.
+     */
+    std::int32_t header_stamp_sec;
+
+    /**
+     * @brief The nanoseconds component of the timestamp.
+     *   
+     */
+    std::int32_t header_stamp_nanos;
+
+    /**
+     * @brief The reference frame ID for the assembled pose of the part.
+     */
+    std::string frame_id;
+
+    /**
+     * @brief The x-coordinate of the position of the part.
+     */
+    _Float64 position_x;
+
+    /**
+     * @brief The y-coordinate of the position of the part.
+     */
+    _Float64 position_y;
+
+    /**
+     * @brief The z-coordinate of the position of the part.
+     */
+    _Float64 position_z;
+
+    /**
+     * @brief The x-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_x;
+
+    /**
+     * @brief The y-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_y;
+
+    /**
+     * @brief The z-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_z;
+
+    /**
+     * @brief The w-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_w;
+
+    /**
+     * @brief The x-coordinate of the installation direction of the part.
+     */
+    _Float64 install_direction_x;
+
+    /**
+     * @brief The y-coordinate of the installation direction of the part.
+     */
+    _Float64 install_direction_y;
+
+    /**
+     * @brief The z-coordinate of the installation direction of the part.
+     */
+    _Float64 install_direction_z;
+
     /**
      * @brief Constructor for a new Combined Part Info object.
      * Default constructor that initializes all member variables to 0 or an empty string 
@@ -77,7 +138,6 @@ public:
     }
 };
 
-// a class that represents information about a part used in an assembly task
 /**
  * @brief class that represents information about a part used in an assembly task
  * 
@@ -85,22 +145,80 @@ public:
 class AssemblyPartInfo
 {
 public:
-    std::uint8_t color; // the color of the part
-    std::uint8_t type; // the type of the part
-    std::int32_t header_stamp_sec; // the seconds component of the timestamp 
-    std::int32_t header_stamp_nanos; // the nanoseconds component of the timestamp 
-    std::string frame_id; // the reference frame ID for the assembled pose of the part
-    _Float64 position_x; // the x-coordinate of the position of the part
-    _Float64 position_y; // the y-coordinate of the position of the part
-    _Float64 position_z; // the z-coordinate of the position of the part
-    _Float64 orientation_x; // the x-coordinate of the orientation of the part
-    _Float64 orientation_y; // the y-coordinate of the orientation of the part
-    _Float64 orientation_z; // the z-coordinate of the orientation of the part
-    _Float64 orientation_w; // the w-coordinate of the orientation of the part
-    _Float64 install_direction_x; // the x-coordinate of the installation direction of the part
-    _Float64 install_direction_y; // the y-coordinate of the installation direction of the part
-    _Float64 install_direction_z; // the z-coordinate of the installation direction of the part 
+    /**
+     * @brief The color of the part.
+     */
+    std::uint8_t color;
 
+    /**
+     * @brief The type of the part.
+     */
+    std::uint8_t type;
+
+    /**
+     * @brief The seconds component of the timestamp.
+     */
+    std::int32_t header_stamp_sec;
+
+    /**
+     * @brief The nanoseconds component of the timestamp.
+     */
+    std::int32_t header_stamp_nanos;
+
+    /**
+     * @brief The reference frame ID for the assembled pose of the part.
+     */
+    std::string frame_id;
+
+    /**
+     * @brief The x-coordinate of the position of the part.
+     */
+    _Float64 position_x;
+
+    /**
+     * @brief The y-coordinate of the position of the part.
+     */
+    _Float64 position_y;
+
+    /**
+     * @brief The z-coordinate of the position of the part.
+     */
+    _Float64 position_z;
+
+    /**
+     * @brief The x-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_x;
+
+    /**
+     * @brief The y-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_y;
+
+    /**
+     * @brief The z-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_z;
+
+    /**
+     * @brief The w-coordinate of the orientation of the part.
+     */
+    _Float64 orientation_w;
+
+    /**
+     * @brief The x-coordinate of the installation direction of the part.
+     */
+    _Float64 install_direction_x;
+
+    /**
+     * @brief The y-coordinate of the installation direction of the part.
+     */
+    _Float64 install_direction_y;
+
+    /**
+     * @brief The z-coordinate of the installation direction of the part.
+     */
+    _Float64 install_direction_z;
    /**
     * @brief default constructor that initializes all member variables to 0 or an empty string 
     * 
@@ -137,7 +255,6 @@ public:
     }
 };
 
-// 
 /**
  * @brief a class that represents information about a part used in an kiting task
  * 
@@ -145,15 +262,32 @@ public:
 class KittingPartInfo
 {
 public:
+    /**
+     * @brief The color of the part.
+     */
     std::uint8_t color;
+      /**
+     * @brief The type of the part.
+     */
     std::uint8_t type;
+    
+      /**
+     * @brief The qaudrant of the tray where the part will be placedt.
+     */
+
     std::uint8_t quadrant;
 
-    // default constructor that initializes all member variables to 0 or an empty string 
+    /**
+    * @brief Default constructor that initializes all member variables to 0 or an empty string 
+    * 
+    */
     KittingPartInfo() : color(0), type(0), quadrant(0) {}
 
-    // Constructor that initializes the member variables based on the order message 
-    // and the index of the part in the kiiting task
+    /**
+    * @brief  Constructor that initializes the member variables based on the order message  
+    *  and the index of the part in the kiiting task
+    */
+
     KittingPartInfo(int which_part, const ariac_msgs::msg::Order::SharedPtr msg)
     {
         // initialize the variables based on the information in the order message
@@ -163,7 +297,6 @@ public:
     }
 };
 
-
 /**
  * @brief This class defines the information about the Combined parts in an order.
  * 
@@ -171,19 +304,28 @@ public:
 class CombinedPartsInfo
 {
 public:
-    int number_of_parts; // The number of assembly parts in the order
-    std::vector<CombinedPartInfo> parts_; // A vector containing information about each assembly part
-    CombinedPartInfo combined_part; // A default instance ofAssemblyPartInfo class
 
-    
+    /**
+     * @brief The number of assembly parts in the order.
+     */
+    int number_of_parts;
 
+    /**
+     * @brief A vector containing information about each assembly part.
+     */
+    std::vector<CombinedPartInfo> parts_;
+
+    /**
+     * @brief A default instance of CombinedPartInfo class.
+     */
+    CombinedPartInfo combined_part;
+   
     /**
      * @brief Default constructor
      * 
      */
     CombinedPartsInfo() : number_of_parts(0), parts_() {}
 
-    // 
     /**
      * @brief Constructor with the shared pointer to the order message as input
      * 
@@ -191,21 +333,16 @@ public:
      */
     CombinedPartsInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
     {
-        // Get the vector of parts from the order message
         std::vector<ariac_msgs::msg::AssemblyPart> parts = msg->combined_task.parts;
-        // Set the number of parts to the size of the vector
         this->number_of_parts = parts.size();
-        // If there are no parts in the vector, create a combined part with default values and add it to the vector
         if (msg->combined_task.parts.empty())
         {
             this->parts_.push_back(combined_part);
         }
-        // If there are parts in the vector, loop over them and create a combined part info for each
         else
         {
             for (int i = 0; i < number_of_parts; i++)
             {
-                // Create a new combined part info for the current part and add it to the vector of part infos
                 this->combined_part = CombinedPartInfo(i, msg);
                 this->parts_.push_back(combined_part);
             }
@@ -220,9 +357,21 @@ public:
 class AssemblyPartsInfo
 {
 public:
-    int number_of_parts; // The number of assembly parts in the order
-    std::vector<AssemblyPartInfo> parts_; // A vector containing information about each assembly part
-    AssemblyPartInfo assembly_part; // A default instance ofAssemblyPartInfo class
+    /**
+     * @brief The number of assembly parts in the order.
+     */
+    int number_of_parts;
+
+    /**
+     * @brief A vector containing information about each assembly part.
+     */
+    std::vector<AssemblyPartInfo> parts_;
+
+    /**
+     * @brief A default instance of AssemblyPartInfo class.
+     */
+    AssemblyPartInfo assembly_part;
+
     
     /**
      * @brief Default constructor initializes number_of_parts to 0 and creates an empty vector of AssemblyPartInfo objects.
@@ -230,7 +379,6 @@ public:
      */
     AssemblyPartsInfo() : number_of_parts(0), parts_() {}
 
-    // 
     /**
      * @brief Constructor that takes an Order message pointer as an argument and initializes AssemblyPartsInfo using the information from the message.
      * 
@@ -238,19 +386,12 @@ public:
      */
     AssemblyPartsInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
     {
-        // Get the vector of assembly task parts from the message.
         std::vector<ariac_msgs::msg::AssemblyPart> parts = msg->assembly_task.parts;
-
-        // Set the number of parts to the size of the vector.
         this->number_of_parts = parts.size();
-
-        // If the vector of parts is empty, add an empty AssemblyPartInfo object to the vector.
         if (msg->assembly_task.parts.empty())
         {
             this->parts_.push_back(assembly_part);
         }
-        // Otherwise, create an AssemblyPartInfo object for each part in the vector 
-        //and add it to the vector of AssemblyPartInfo objects.
         else
         {
             for (int i = 0; i < number_of_parts; i++)
@@ -262,8 +403,6 @@ public:
     }
 };
 
-
-
 /**
  * @brief This class defines the information about the kitting parts in an order.
  * 
@@ -272,28 +411,42 @@ class KittingPartsInfo
 {
 public:
 
-    int number_of_parts; // The number of kitting parts in the order
-    std::vector<KittingPartInfo> parts_; // A vector containing information about each kitting part
-    KittingPartInfo kitting_part; // A default instance of KittingPartInfo class
+    /**
+     * @brief The number of kitting parts in the order.
+     */
+    int number_of_parts;
 
+    /**
+     * @brief A vector containing information about each kitting part.
+     */
+    std::vector<KittingPartInfo> parts_;
 
-    // Default constructor
+    /**
+     * @brief A default instance of KittingPartInfo class.
+     */
+    KittingPartInfo kitting_part;
+
+    /**
+     * @brief Default constructor initializes number_of_parts to 0 and creates an empty vector of KittingPartInfo objects.
+     * 
+     */
     KittingPartsInfo() : number_of_parts(0), parts_() {}
 
-    // Constructor that initializes the object using an order message pointer
+    /**
+     * @brief Constructor that takes an Order message pointer as an argument and initializes AssemblyPartsInfo using the information from the message.
+     * 
+     * @param msg Order message pointer
+     */
     KittingPartsInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
     {
         std::vector<ariac_msgs::msg::KittingPart> parts = msg->kitting_task.parts;
         this->number_of_parts = parts.size();
-
-        // If there are no kitting parts in the order, add a default KittingPartInfo object to the parts_ vector
         if (msg->kitting_task.parts.empty())
         {
             this->parts_.push_back(kitting_part);
         }
         else
         {
-             // Iterate through the kitting parts and add their information to the parts_ vector
             for (int i = 0; i < this->number_of_parts; i++)
             {
                 this->kitting_part = KittingPartInfo(i, msg);
@@ -310,18 +463,29 @@ public:
 class CombinedInfo
 {
 public:
-    std::uint8_t station; // station number where the task should be performed
-    CombinedPartsInfo combined_parts; // information about the parts needed for the combined task
+    /**
+     * @brief Station number where the task should be performed.
+     */
+    std::uint8_t station;
 
-    // Constructor for CombinedInfo class
+    /**
+     * @brief Information about the parts needed for the combined task.
+     */
+    CombinedPartsInfo combined_parts;
+
+    /**
+     * @brief Default constructor for CombinedInfo class that initializes station number to 0.
+     * 
+     */
     CombinedInfo() : station(0) {}
 
-    // Constructor that initializes the object using an Order message
+    /**
+     * @brief Default constructor for CombinedInfo class that initializes the object using an Order message
+     * 
+     */
     CombinedInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
     {
-        // set the station number
         this->station = msg->combined_task.station;
-         // set the information about the parts for the task
         this->combined_parts = CombinedPartsInfo(msg);
     }
 };
@@ -333,22 +497,37 @@ public:
 class AssemblyInfo
 {
 public:
-    std::vector<std::uint8_t> agv_numbers;// Vector to store AGV numbers
-    std::uint8_t station; // Station number
-    AssemblyPartsInfo assembly_parts;// Object of class AssemblyPartsInfo to store parts 
 
-    // Constructor for AssemblyInfo class
+    /**
+     * @brief Vector to store AGV numbers.
+     */
+    std::vector<std::uint8_t> agv_numbers;
+
+    /**
+     * @brief Station number.
+     */
+    std::uint8_t station;
+
+    /**
+     * @brief Object of class AssemblyPartsInfo to store parts.
+     */
+    AssemblyPartsInfo assembly_parts;
+    /**
+     * @brief Constructor for AssemblyInfo class
+     *
+     * Initializes the attributes of the class to default values.
+     */
     AssemblyInfo() : agv_numbers(0), station(0) {}
 
-    // Constructor for AssemblyInfo class that takes in an Order message as input
-    AssemblyInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
+    /**
+     * @brief Constructor for AssemblyInfo class that takes in an Order message as input
+     *
+     * @param msg a shared pointer to an Order message object
+     */
+    AssemblyInfo(const ariac_msgs::msg::Order::SharedPtr msg)
     {   
-        // Store the AGV numbers and station number from the Order message
         this->agv_numbers = msg->assembly_task.agv_numbers;
         this->station = msg->assembly_task.station;
-            
-        // Create an AssemblyPartsInfo object to store information about the assembly parts
-        // and store it in the assembly_parts variable
         this->assembly_parts = AssemblyPartsInfo(msg);
     }
 };
@@ -362,16 +541,38 @@ class KittingInfo
 {
 public:
 
-    std::uint8_t agv_number; // the AGV number where kitting should be done
-    int8_t tray_id; // the tray id for the kitting task
-    std::uint8_t destination; // the destination where the kitting should be done
-    KittingPartsInfo kitting_parts; // the kitting parts info
-                   
-    // Constructor for KittingInfo class
+    /**
+     * @brief The AGV number where the kitting should be done
+     */
+    std::uint8_t agv_number;
+
+    /**
+     * @brief The tray ID for the kitting task
+     */
+    int8_t tray_id;
+
+    /**
+     * @brief The destination where the kitting should be done
+     */
+    std::uint8_t destination;
+
+    /**
+     * @brief Information about the kitting parts required for the task
+     */
+    KittingPartsInfo kitting_parts;
+
+    /**
+     * @brief Default constructor for KittingInfo class
+     * 
+     */
     KittingInfo() : agv_number(0), tray_id(0), destination(0) {}
 
-    // Constructor that sets kitting part information from an Order message
-    KittingInfo(const ariac_msgs::msg ::Order::SharedPtr msg)
+    /**
+     * @brief Constructor for KittingInfo class that sets kitting part information from an Order message
+     * 
+     * @param msg A shared pointer to the Order message containing kitting task information
+     */
+    KittingInfo(const ariac_msgs::msg::Order::SharedPtr msg)
     {
         this->agv_number = msg->kitting_task.agv_number;
         this->tray_id = msg->kitting_task.tray_id;
@@ -380,43 +581,99 @@ public:
     }
 };
 /**
+ * @brief Class to store the Order received from ARIAC
+ * 
+ */
+/**
  * @brief This is the Class Definition for OrderData
  * 
  */
 class OrderData
 {
 public:
-    // Member variables
-    std::string id; // Order ID
-    int type; // Type of order (0 = Kitting, 1 = Assembly, 2 = Combined)
-    bool priority; // Priority of the order (true = high priority, false = low priority)
-    KittingInfo kitting; // Information about the kitting task (if received)
-    AssemblyInfo assembly; // Information about the assembly task (if received)
-    CombinedInfo combined; // Information about the combined task (if received)
-    
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    /**
+     * @brief The unique ID of the order.
+     */
+    std::string id;
+
+    /**
+     * @brief The type of the order.
+     * 0 - Kitting
+     * 1 - Assembly
+     * 2 - Combined
+     */
+    int type;
+
+    /**
+     * @brief The priority of the order.
+     * true - high priority
+     * false - low priority
+     */
+    bool priority;
+
+    /**
+     * @brief Information about the kitting task (if received).
+     */
+    KittingInfo kitting;
+
+    /**
+     * @brief Information about the assembly task (if received).
+     */
+    AssemblyInfo assembly;
+
+    /**
+     * @brief Information about the combined task (if received).
+     */
+    CombinedInfo combined;
+
+
+    /**
+     * @brief A flag indicating whether the task is of priority or not.
+     */
     bool importance_flag{false};
+
+    /**
+     * @brief A flag indicating whether the task has been left incomplete to complete a task of higher priority.
+     */
     bool abandoned_{false};
-    bool agv_part_poses_extracted{false}; 
-    bool combined_tray_placed_on_agv{false}; 
-    int combined_agv_selected = -1; 
-    int combined_tray_selected = 0; 
 
+    /**
+     * @brief A flag indicating whether the positions of parts in an AGV have been extracted in the incomplete order.
+     */
+    bool agv_part_poses_extracted{false};
 
+    /**
+     * @brief A flag indicating whether a combined tray has been placed on an AGV in the incomplete order.
+     */
+    bool combined_tray_placed_on_agv{false};
+
+    /**
+     * @brief The ID of the selected AGV for a combined tray.
+     */
+    int combined_agv_selected = -1;
+
+    /**
+     * @brief The ID of the selected combined tray.
+     */
+    int combined_tray_selected = 0;
+
+    /**
+     * @brief A map containing the details of the kitting parts already placed on the tray before the task was abandoned to take
+     * new priority order. This map saves the progress of the kitting task.
+     */
     std::map<uint8_t, std::pair<std::pair<uint8_t, uint8_t>, uint8_t>> kitting_part_details_orderdata = {
-    {1 , std::make_pair(std::make_pair(0, 0), 0)}, 
-    {2 , std::make_pair(std::make_pair(0, 0), 0)}, 
-    {3 , std::make_pair(std::make_pair(0, 0), 0)}, 
-    {4 , std::make_pair(std::make_pair(0, 0), 0)}};
+        {1 , std::make_pair(std::make_pair(0, 0), 0)}, 
+        {2 , std::make_pair(std::make_pair(0, 0), 0)}, 
+        {3 , std::make_pair(std::make_pair(0, 0), 0)}, 
+        {4 , std::make_pair(std::make_pair(0, 0), 0)}
+        };
 
-    //  std::map<uint8_t, std::map<uint8_t, std::pair<uint8_t, uint8_t>>> assembly_part_details_orderdata = {
-    // {1, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
-    // {2, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
-    // {3, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}},
-    // {4, {{1, std::make_pair(0, 0)}, {2, std::make_pair(0, 0)}, {3, std::make_pair(0, 0)}, {4, std::make_pair(0, 0)}}}};
-
+    /**
+     * @brief An array indicating the status of assembly for each part that has been assebled before the assebly task is abandoned to take new 
+     * priority order. This array saves the progress of the assembly task.
+     */
     std::array<int, 4> status_of_assembly{{1,1,1,1}};
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     /**
      * @brief Constructor to initialise the class attributes
@@ -425,12 +682,12 @@ public:
      */
     OrderData(const std::shared_ptr<ariac_msgs::msg ::Order> msg)
     {
-        this->id = msg->id;   // Set order ID
-        this->type = msg->type; // Set order type
-        this->priority = msg->priority; // Set order priority
-        this->kitting = KittingInfo(msg);   //! Create KittingInfo object from message and assign to kitting member variable
-        this->assembly = AssemblyInfo(msg);  // Create AssemblyInfo object from message and assign to assembly member variable
-        this->combined = CombinedInfo(msg);  // Create CombinedInfo object from message and assign to combined member variable
+        this->id = msg->id; 
+        this->type = msg->type; 
+        this->priority = msg->priority;
+        this->kitting = KittingInfo(msg);
+        this->assembly = AssemblyInfo(msg); 
+        this->combined = CombinedInfo(msg);
     
     }
 };
