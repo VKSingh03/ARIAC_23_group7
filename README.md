@@ -38,3 +38,32 @@ Output Video for RWA3 : https://youtu.be/J83ADXhgkKc
 Output Video for RWA4 : https://youtu.be/dmnHMJKD2i4
 
 
+
+```
+group7
+├─ .vscode
+│  ├─ c_cpp_properties.json
+│  └─ settings.json
+├─ CMakeLists.txt
+├─ README.md
+├─ config
+│  └─ group7_sensors.yaml
+├─ etc
+│  ├─ RWA2 Group7 Control Diagram.jpg
+│  └─ instructions.txt
+├─ include
+│  └─ group7
+│     ├─ competition_state_subscriber.hpp
+│     └─ order_class.hpp
+├─ launch
+│  └─ group7.launch.py
+├─ package.xml
+├─ rviz
+│  └─ group7.rviz
+└─ src
+   ├─ .vscode
+   │  ├─ c_cpp_properties.json
+   │  └─ settings.json
+   └─ competition_state_subscriber.cpp
+
+```
