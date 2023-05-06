@@ -1331,56 +1331,56 @@ bool CompetitorControlSystem::CeilingRobotMoveCartesian(std::vector<geometry_msg
 
 bool CompetitorControlSystem::CeilingRobotWaitForAssemble(int station, ariac_msgs::msg::AssemblyPart part)
 {
-  // Wait for part to be attached
-  rclcpp::Time start = now();
-  std::vector<geometry_msgs::msg::Pose> waypoints;
-  geometry_msgs::msg::Pose starting_pose = ceiling_robot_.getCurrentPose().pose;
+    // Wait for part to be attached
+    rclcpp::Time start = now();
+    std::vector<geometry_msgs::msg::Pose> waypoints;
+    geometry_msgs::msg::Pose starting_pose = ceiling_robot_.getCurrentPose().pose;
 
-  bool assembled = false;
-  while (!assembled) {
-    RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Waiting for part to be assembled");
-
-    // Check if part is assembled
-    switch (part.part.type) {
-      case ariac_msgs::msg::Part::BATTERY:
-        assembled = assembly_station_states_[station].battery_attached;
-        break;
-      case ariac_msgs::msg::Part::PUMP:
-        assembled = assembly_station_states_[station].pump_attached;
-        break;
-      case ariac_msgs::msg::Part::SENSOR:
-        assembled = assembly_station_states_[station].sensor_attached;
-        break;
-      case ariac_msgs::msg::Part::REGULATOR:
-        assembled = assembly_station_states_[station].regulator_attached;
-        break;
-      default:
-        RCLCPP_WARN(get_logger(), "Not a valid part type");
-        return false;
-    }
-
+    bool assembled = false;
     double step = 0.0005;
+    while (!assembled) {
+        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000, "Waiting for part to be assembled");
 
-    waypoints.clear();
-    starting_pose.position.x += step * part.install_direction.x;
-    starting_pose.position.y += step * part.install_direction.y;
-    starting_pose.position.z += step * part.install_direction.z;
-    waypoints.push_back(starting_pose);
+        // Check if part is assembled
+        switch (part.part.type) {
+        case ariac_msgs::msg::Part::BATTERY:
+            assembled = assembly_station_states_[station].battery_attached;
+            break;
+        case ariac_msgs::msg::Part::PUMP:
+            assembled = assembly_station_states_[station].pump_attached;
+            step = 0.00025;
+            break;
+        case ariac_msgs::msg::Part::SENSOR:
+            assembled = assembly_station_states_[station].sensor_attached;
+            break;
+        case ariac_msgs::msg::Part::REGULATOR:
+            assembled = assembly_station_states_[station].regulator_attached;
+            break;
+        default:
+            RCLCPP_WARN(get_logger(), "Not a valid part type");
+            return false;
+        }
 
-    CeilingRobotMoveCartesian(waypoints, 0.01, 0.01, false);
+        waypoints.clear();
+        starting_pose.position.x += step * part.install_direction.x;
+        starting_pose.position.y += step * part.install_direction.y;
+        starting_pose.position.z += step * part.install_direction.z;
+        waypoints.push_back(starting_pose);
 
-    usleep(500);
+        CeilingRobotMoveCartesian(waypoints, 0.01, 0.01, false);
 
-    if (now() - start > rclcpp::Duration::from_seconds(5)){
-      RCLCPP_ERROR(get_logger(), "Unable to assemble object");
-      ceiling_robot_.stop();
-      return false;
+        usleep(500);
+
+        if (now() - start > rclcpp::Duration::from_seconds(5)){
+        RCLCPP_ERROR(get_logger(), "Unable to assemble object");
+        ceiling_robot_.stop();
+        return false;
+        }
     }
-  }
 
-  RCLCPP_INFO(get_logger(), "Part is assembled");
-  
-  return true;
+    RCLCPP_INFO(get_logger(), "Part is assembled");
+    
+    return true;
 }
 
 void CompetitorControlSystem::CeilingRobotSendHome(){
