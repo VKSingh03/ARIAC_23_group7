@@ -386,12 +386,12 @@ public:
      */
     void CeilingRobotSendHome(); 
 
-    /**
-     * @brief method to update the map that contains details of the required parts for the task
-     * 
-     * @param task object that contains all the information for the Combined Task
-     */
-    void CombinedTaskAssemblyUpdate(CombinedInfo task);
+   //  /**
+   //   * @brief method to update the map that contains details of the required parts for the task
+   //   * 
+   //   * @param task object that contains all the information for the Combined Task
+   //   */
+   //  void CombinedTaskAssemblyUpdate(CombinedInfo task);
     // int AGVAvailable(int station);
     // int TrayAvailable(int station);
     /**
@@ -457,6 +457,15 @@ public:
      * @return false 
      */
     bool CeilingRobotWaitForAssemble(int station, ariac_msgs::msg::AssemblyPart part);
+    /**
+     * @brief Move the sensor around at assembly insert to ensure sufficent collision to attach the part
+     * 
+     * @param station station no. at which action is carried out
+     * @param part details of the part to be assembled
+     * @return true 
+     * @return false 
+     */
+    bool CeilingRobotWaitForAssembleSensor(int station, ariac_msgs::msg::AssemblyPart part);
 
 private:
 

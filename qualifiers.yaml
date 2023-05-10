@@ -1,0 +1,13 @@
+team_name: "Team_ATOM"
+
+github:
+    repository: "github.com/VKSingh03/group7.git" # remove https
+    personal_access_token: "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"
+
+competition:
+    package_name: "group7"
+    sensor_file: "group7_sensors" # without .yaml
+    launch_file: "ariac_robots_moveit.launch.py"
+    launch_file: "group7.launch.py"
+    debian_packages: []
+    pip_packages: []
