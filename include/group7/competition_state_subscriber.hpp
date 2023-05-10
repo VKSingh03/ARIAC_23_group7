@@ -392,7 +392,7 @@ public:
    //   * @param task object that contains all the information for the Combined Task
    //   */
    //  void CombinedTaskAssemblyUpdate(CombinedInfo task);
-    // int AGVAvailable(int station);
+    int AGVAvailable(int station);
     // int TrayAvailable(int station);
     /**
      * @brief Takes station information and accordingly assigns joint value target to implement 
@@ -1157,4 +1157,10 @@ private:
         {1.07651, -0.15498, -0.566},
         {1.07651, -0.33498, -0.566},
         {1.07651, -0.51498, -0.566}}} ;
+   
+   //! Array to store available agvs
+    /*!
+      Array to store non occupied AGVs
+    */
+   std::array<bool, 4> agv_availablity{{true, true, true, true}}; 
 }; 

@@ -235,6 +235,15 @@ void CompetitorControlSystem::order_callback(const ariac_msgs::msg::Order::Share
         orders_.push_back(order);
         RCLCPP_INFO(this->get_logger()," Added normal order '%s' to open orders", order.id.c_str());
     }
+
+    if(order.type == ariac_msgs::msg::Order::KITTING){
+        agv_availablity[order.kitting.agv_number-1] = false;
+    }
+    else if(order.type == ariac_msgs::msg::Order::ASSEMBLY){
+        for(auto i : order.assembly.agv_numbers){
+            agv_availablity[i-1] = false;
+        }
+    }
 }
 
 int CompetitorControlSystem::bin_get_quantity_for_this_part(uint8_t bin, uint8_t part, uint8_t color){
@@ -398,6 +407,10 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
     // }   }
 
     else if(current_order_.type == ariac_msgs::msg::Order::COMBINED){
+        kitting_part_details[1] = std::make_pair(std::make_pair(0,0),0);
+        kitting_part_details[2] = std::make_pair(std::make_pair(0,0),0);
+        kitting_part_details[3] = std::make_pair(std::make_pair(0,0),0);
+        kitting_part_details[4] = std::make_pair(std::make_pair(0,0),0);
         RCLCPP_INFO_STREAM(get_logger(),"Checking insufficient parts challange for Combined task.");
         int insuf_part_kitting=4;
         // RCLCPP_INFO(this->get_logger(), "Quantity of parts = %d", current_order_.kitting.kitting_parts.number_of_parts);
@@ -1657,21 +1670,29 @@ void CompetitorControlSystem::CeilingRobotWaitForAttach(double timeout)
   } 
 }
 
-// int CompetitorControlSystem::AGVAvailable(int station){
-//     if (station == ariac_msgs::msg::CombinedTask::AS1 || station == ariac_msgs::msg::CombinedTask::AS2){
-//         if(agv2_location == ariac_msgs::msg::AGVStatus::KITTING)
-//             return 2;
-//         else if(agv1_location == ariac_msgs::msg::AGVStatus::KITTING)
-//             return 1;
-//     }
-//     else if (station == ariac_msgs::msg::CombinedTask::AS3 || station == ariac_msgs::msg::CombinedTask::AS4){
-//         if(agv3_location == ariac_msgs::msg::AGVStatus::KITTING)
-//             return 3;
-//         else if(agv4_location == ariac_msgs::msg::AGVStatus::KITTING)
-//             return 4;
-//     }
-//     return 0;
-// }
+int CompetitorControlSystem::AGVAvailable(int station){
+    if (station == ariac_msgs::msg::CombinedTask::AS1 || station == ariac_msgs::msg::CombinedTask::AS2){
+        if(agv_availablity[0]){
+            agv_availablity[0] = false;
+            return 1;
+        }
+        else if(agv_availablity[1]){
+            agv_availablity[1] = false;
+            return 2;
+        }
+    }
+    else if (station == ariac_msgs::msg::CombinedTask::AS3 || station == ariac_msgs::msg::CombinedTask::AS4){
+        if(agv_availablity[3]){
+            agv_availablity[3] = false;
+            return 4;
+        }
+        else if(agv_availablity[2]){
+            agv_availablity[2] = false;
+            return 3;
+        }
+    }
+    return 0;
+}
 
 // int CompetitorControlSystem::TrayAvailable(int station){
 //     // Check table 1
@@ -1944,7 +1965,7 @@ bool CompetitorControlSystem::CompleteAssemblyTask(OrderData current_order_)
 
 bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
 
-    // int agv = AGVAvailable(task.station);
+    
     // int tray = TrayAvailable(task.station);
     CombinedInfo task = current_order_.combined;
     int agv;
@@ -1978,13 +1999,13 @@ bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
             }
         }
         current_order_.combined_tray_selected = tray; 
-
-        // Decide which AGV to use
-        if (task.station == ariac_msgs::msg::CombinedTask::AS1 or task.station == ariac_msgs::msg::CombinedTask::AS2) {
-            agv = 1;
-        } else {
-            agv = 4;
-        }
+        agv = AGVAvailable(task.station);
+        // // Decide which AGV to use
+        // if (task.station == ariac_msgs::msg::CombinedTask::AS1 or task.station == ariac_msgs::msg::CombinedTask::AS2) {
+        //     agv = 1;
+        // } else {
+        //     agv = 4;
+        // }
         current_order_.combined_agv_selected = agv; 
 
         MoveAGV(agv, ariac_msgs::srv::MoveAGV::Request::KITTING);
