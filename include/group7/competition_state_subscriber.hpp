@@ -119,19 +119,19 @@ public:
         // Subscribers to sensors
         kts1_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
             "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(), 
-            std::bind(&CompetitorControlSystem::kts1_camera_cb, this, std::placeholders::_1));
+            std::bind(&CompetitorControlSystem::kts1_camera_cb, this, std::placeholders::_1),options);
 
         kts2_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
             "/ariac/sensors/kts2_camera/image", rclcpp::SensorDataQoS(), 
-            std::bind(&CompetitorControlSystem::kts2_camera_cb, this, std::placeholders::_1));
+            std::bind(&CompetitorControlSystem::kts2_camera_cb, this, std::placeholders::_1),options);
 
         left_bins_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
             "/ariac/sensors/left_bins_camera/image", rclcpp::SensorDataQoS(), 
-            std::bind(&CompetitorControlSystem::left_bins_camera_cb, this, std::placeholders::_1));
+            std::bind(&CompetitorControlSystem::left_bins_camera_cb, this, std::placeholders::_1),options);
 
         right_bins_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
             "/ariac/sensors/right_bins_camera/image", rclcpp::SensorDataQoS(), 
-            std::bind(&CompetitorControlSystem::right_bins_camera_cb, this, std::placeholders::_1));
+            std::bind(&CompetitorControlSystem::right_bins_camera_cb, this, std::placeholders::_1),options);
 
         conveyor_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
             "/ariac/sensors/conv_camera1/image", rclcpp::SensorDataQoS(), 
@@ -386,12 +386,11 @@ public:
      */
     void CeilingRobotSendHome(); 
 
-   //  /**
-   //   * @brief method to update the map that contains details of the required parts for the task
-   //   * 
-   //   * @param task object that contains all the information for the Combined Task
-   //   */
-   //  void CombinedTaskAssemblyUpdate(CombinedInfo task);
+    /**
+     * @brief Method to find Available agv for combined task
+     * @param station on which combined will happen
+     * @return agv number
+     */
     int AGVAvailable(int station);
     // int TrayAvailable(int station);
     /**

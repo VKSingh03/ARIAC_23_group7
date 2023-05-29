@@ -1113,20 +1113,50 @@ std::array<double,3> CompetitorControlSystem::BinAvailableLocation(int location)
         auto right_bins_parts_current = right_bins_parts_;
         for(auto i: right_bins_parts_current){
             for(auto j=0; j < int(right_bin.size()); j++){  
-                if (std::sqrt( std::pow(right_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(right_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.2){
+                if (std::sqrt( std::pow(right_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(right_bin.at(j)[2] -  i.pose.position.z, 2)) == 0){
                     not_available_indices_right.push_back(j);
                     found = true; 
-                    break;
+                    // break;
                 }
             }
         }
         int random_num_right{};
-        do {
-            random_num_right = rand()%18;
-        } while (std::find(not_available_indices_right.begin(), not_available_indices_right.end(), random_num_right) != not_available_indices_right.end());
-        
-        std::array<double,3> pose{{right_bin.at(random_num_right).at(0), right_bin.at(random_num_right).at(1), right_bin.at(random_num_right).at(2)}};
-        return pose ;  
+        if(found)
+        {    do {
+                random_num_right = rand()%18;
+            } while (std::find(not_available_indices_right.begin(), not_available_indices_right.end(), random_num_right) != not_available_indices_right.end());
+            
+            std::array<double,3> pose{{right_bin.at(random_num_right).at(0), right_bin.at(random_num_right).at(1), right_bin.at(random_num_right).at(2)}};
+            return pose ;
+        }
+
+        else{
+            std::vector<int> not_available_indices_left;
+            auto left_bins_parts_current = left_bins_parts_;
+            for(auto i: left_bins_parts_current){
+                for(auto j=0; j < int(left_bin.size()); j++){  
+                    if (std::sqrt( std::pow(left_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(left_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.05){
+                        not_available_indices_left.push_back(j);
+                        found = true;
+                        // break;
+                    }
+                }
+            }
+            int random_num_left{};
+            if(found)
+            {
+                do {
+                random_num_left = rand()%18;
+                } while (std::find(not_available_indices_left.begin(), not_available_indices_left.end(), random_num_left) != not_available_indices_left.end());
+                
+                std::array<double,3> pose{{left_bin.at(random_num_left).at(0), left_bin.at(random_num_left).at(1), left_bin.at(random_num_left).at(2)}};
+                return pose ;
+            }
+            else{
+                std::array<double,3> pose{{0, 0, 1.0}};
+                return pose ;
+            }
+        } 
     }
 
     else if((location == 2) || !found){
@@ -1134,20 +1164,48 @@ std::array<double,3> CompetitorControlSystem::BinAvailableLocation(int location)
         auto left_bins_parts_current = left_bins_parts_;
         for(auto i: left_bins_parts_current){
             for(auto j=0; j < int(left_bin.size()); j++){  
-                if (std::sqrt( std::pow(left_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(left_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.2){
+                if (std::sqrt( std::pow(left_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(left_bin.at(j)[2] -  i.pose.position.z, 2)) == 0){
                     not_available_indices_left.push_back(j);
                     found = true;
-                    break;
+                    // break;
                 }
             }
         }
         int random_num_left{};
-        do {
-            random_num_left = rand()%18;
-        } while (std::find(not_available_indices_left.begin(), not_available_indices_left.end(), random_num_left) != not_available_indices_left.end());
-        
-        std::array<double,3> pose{{left_bin.at(random_num_left).at(0), left_bin.at(random_num_left).at(1), left_bin.at(random_num_left).at(2)}};
-        return pose ;
+        if(found){
+            do {
+                random_num_left = rand()%18;
+            } while (std::find(not_available_indices_left.begin(), not_available_indices_left.end(), random_num_left) != not_available_indices_left.end());
+            
+            std::array<double,3> pose{{left_bin.at(random_num_left).at(0), left_bin.at(random_num_left).at(1), left_bin.at(random_num_left).at(2)}};
+            return pose ;
+        }
+        else{
+            std::vector<int> not_available_indices_right;
+            auto right_bins_parts_current = right_bins_parts_;
+            for(auto i: right_bins_parts_current){
+                for(auto j=0; j < int(right_bin.size()); j++){  
+                    if (std::sqrt( std::pow(right_bin.at(j)[1] -  i.pose.position.y, 2) + std::pow(right_bin.at(j)[2] -  i.pose.position.z, 2)) <= 0.05){
+                        not_available_indices_right.push_back(j);
+                        found = true; 
+                        // break;
+                    }
+                }
+            }
+            int random_num_right{};
+            if(found)
+            {    do {
+                    random_num_right = rand()%18;
+                } while (std::find(not_available_indices_right.begin(), not_available_indices_right.end(), random_num_right) != not_available_indices_right.end());
+                
+                std::array<double,3> pose{{right_bin.at(random_num_right).at(0), right_bin.at(random_num_right).at(1), right_bin.at(random_num_right).at(2)}};
+                return pose ;
+            }
+            else{
+                std::array<double,3> pose{{0, 0, 1.0}};
+                return pose ;
+            }
+        }
     }
     std::array<double,3> pose{{0, 0, 1.0}};
     return pose ;
@@ -1255,7 +1313,7 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
         geometry_msgs::msg::Pose part_drop_offset = BuildPose(pose.at(0), pose.at(1), pose.at(2), geometry_msgs::msg::Quaternion());
         geometry_msgs::msg::Pose part_drop_pose = MultiplyPose(right_bins_camera_pose_, part_drop_offset);
         waypoints.push_back(BuildPose(part_drop_pose.position.x , part_drop_pose.position.y, part_drop_pose.position.z + 0.3, SetRobotOrientation(0)));
-        waypoints.push_back(BuildPose(part_drop_pose.position.x , part_drop_pose.position.y, part_drop_pose.position.z + 0.2, SetRobotOrientation(0)));
+        waypoints.push_back(BuildPose(part_drop_pose.position.x , part_drop_pose.position.y, part_drop_pose.position.z + 0.25, SetRobotOrientation(0)));
         FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
 
         FloorRobotSetGripperState(false); 
@@ -1278,7 +1336,7 @@ bool CompetitorControlSystem::FloorRobotConveyorPartspickup(int location){
         geometry_msgs::msg::Pose part_drop_offset = BuildPose(pose.at(0), pose.at(1), pose.at(2), geometry_msgs::msg::Quaternion());
         geometry_msgs::msg::Pose part_drop_pose = MultiplyPose(left_bins_camera_pose_, part_drop_offset);
         waypoints.push_back(BuildPose(part_drop_pose.position.x , part_drop_pose.position.y, part_drop_pose.position.z + 0.3, SetRobotOrientation(0)));
-        waypoints.push_back(BuildPose(part_drop_pose.position.x , part_drop_pose.position.y, part_drop_pose.position.z + 0.2, SetRobotOrientation(0)));
+        waypoints.push_back(BuildPose(part_drop_pose.position.x , part_drop_pose.position.y, part_drop_pose.position.z + 0.25, SetRobotOrientation(0)));
         FloorRobotMoveCartesian(waypoints, 0.3, 0.3);
 
         FloorRobotSetGripperState(false); 
@@ -1694,19 +1752,6 @@ int CompetitorControlSystem::AGVAvailable(int station){
     return 0;
 }
 
-// int CompetitorControlSystem::TrayAvailable(int station){
-//     // Check table 1
-//     if(kts1_trays_.size()>0){
-//         return kts1_trays_[0].id;
-//     }
-//     // Check table 2
-//     else if(kts2_trays_.size()>0){
-//         return kts2_trays_[0].id;
-//     }
-//     else 
-//         return 0; 
-// }
-
 bool CompetitorControlSystem::CompleteKittingTask(OrderData current_order_)
 {   
     KittingInfo task = current_order_.kitting;
@@ -1965,7 +2010,6 @@ bool CompetitorControlSystem::CompleteAssemblyTask(OrderData current_order_)
 
 bool CompetitorControlSystem::CompleteCombinedTask(OrderData current_order_){
 
-    
     // int tray = TrayAvailable(task.station);
     CombinedInfo task = current_order_.combined;
     int agv;
