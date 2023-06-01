@@ -2381,7 +2381,21 @@ bool CompetitorControlSystem::CompleteOrders(){
             current_order_[0].abandoned_ = CompetitorControlSystem::CompleteKittingTask(current_order_[0]);
             // Submit order
             if (!current_order_[0].abandoned_){
-            CompetitorControlSystem::SubmitOrder(current_order_[0].id);
+                // loop until the AGV is at the warehouse
+                int kitting_agv_num = current_order_[0].kitting.agv_number; 
+                auto agv_location = -1;
+                while (agv_location != ariac_msgs::msg::AGVStatus::WAREHOUSE)
+                {
+                    if (kitting_agv_num == 1)
+                        agv_location = agv1_location;
+                    else if (kitting_agv_num == 2)
+                        agv_location = agv2_location;
+                    else if (kitting_agv_num == 3)
+                        agv_location = agv3_location;
+                    else if (kitting_agv_num == 4)
+                        agv_location = agv4_location;
+                }
+                CompetitorControlSystem::SubmitOrder(current_order_[0].id);
             }
             current_order_.erase(current_order_.begin());
         } 
