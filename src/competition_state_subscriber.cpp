@@ -440,13 +440,6 @@ bool CompetitorControlSystem::InsufficientPartsChallange(OrderData current_order
     return true;
 }
 
-// void CompetitorControlSystem::CombinedTaskAssemblyUpdate(CombinedInfo task){   
-//     assembly_part_details[task.station][1]= std::make_pair(task.combined_parts.parts_[0].type,task.combined_parts.parts_[0].color);
-//     assembly_part_details[task.station][2]= std::make_pair(task.combined_parts.parts_[1].type,task.combined_parts.parts_[1].color);
-//     assembly_part_details[task.station][3]= std::make_pair(task.combined_parts.parts_[2].type,task.combined_parts.parts_[2].color);
-//     assembly_part_details[task.station][4]= std::make_pair(task.combined_parts.parts_[3].type,task.combined_parts.parts_[3].color);  
-// }
-
 void CompetitorControlSystem::floor_gripper_state_cb(const ariac_msgs::msg::VacuumGripperState::ConstSharedPtr msg) 
 {
   floor_gripper_state_ = *msg;
